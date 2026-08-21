@@ -3,7 +3,7 @@ import { Scale, Terminal, ShieldCheck } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="mt-auto border-t border-slate-800/60 bg-[#06070a]/90 text-slate-400 text-xs py-10">
+    <footer className="mt-auto border-t border-slate-800/60 bg-[#06070a]/90 text-slate-400 text-xs py-10 pb-24 md:pb-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex flex-col items-center md:items-start gap-1">
           <div className="flex items-center gap-2">

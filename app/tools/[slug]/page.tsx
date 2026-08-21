@@ -1,6 +1,7 @@
+import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Sparkles, Wrench, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { TOOLS } from "@/data/tools";
 import { IconHelper } from "@/components/IconHelper";
 import TextCaseConverter from "@/components/tools/TextCaseConverter";
@@ -25,6 +26,38 @@ export async function generateStaticParams() {
   }));
 }
 
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const tool = TOOLS.find((t) => t.slug === slug);
+
+  if (!tool) {
+    return {
+      title: "Tool Tidak Ditemukan",
+    };
+  }
+
+  return {
+    title: `${tool.name} — Utilitas Online Gratis & Aman`,
+    description: tool.description,
+    keywords: [...tool.tags, "clyra", "online tool", "free tool", "client side safe"],
+    openGraph: {
+      title: `${tool.name} | Clyra Tools Hub`,
+      description: tool.description,
+      url: `https://clyra.vercel.app/tools/${tool.slug}`,
+      type: "website",
+      siteName: "Clyra",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${tool.name} | Clyra`,
+      description: tool.description,
+    },
+    alternates: {
+      canonical: `https://clyra.vercel.app/tools/${tool.slug}`,
+    },
+  };
+}
+
 export default async function ToolDetailPage({ params }: PageProps) {
   const { slug } = await params;
   const tool = TOOLS.find((t) => t.slug === slug);
@@ -39,7 +72,7 @@ export default async function ToolDetailPage({ params }: PageProps) {
       <div className="fixed inset-0 bg-radial-gradient pointer-events-none" />
       <div className="fixed inset-0 bg-grid-pattern opacity-40 pointer-events-none" />
 
-      <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
         {/* Navigation Breadcrumb */}
         <div className="mb-6">
           <Link
