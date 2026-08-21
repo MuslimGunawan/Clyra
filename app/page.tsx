@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import DynamicLink from "@/components/DynamicLink";
 import { 
   Wrench, 
   Sparkles, 
@@ -117,7 +118,7 @@ export default function LandingPage() {
                 {filteredTools.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {filteredTools.map((t) => (
-                      <Link
+                      <DynamicLink
                         key={t.id}
                         href={t.status === "ready" ? `/tools/${t.slug}` : "/tools"}
                         className="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/80 hover:bg-indigo-950/40 border border-slate-800 hover:border-indigo-500/40 text-xs transition-colors"
@@ -126,7 +127,7 @@ export default function LandingPage() {
                         <span className="text-[10px] font-mono text-indigo-400">
                           {t.status === "ready" ? "Buka" : "Segera"}
                         </span>
-                      </Link>
+                      </DynamicLink>
                     ))}
                   </div>
                 ) : (
@@ -138,21 +139,21 @@ export default function LandingPage() {
 
           {/* Quick CTA Actions */}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5">
-            <Link
+            <DynamicLink
               href="/tools"
               className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-lg shadow-indigo-600/25 hover:shadow-indigo-600/40 transition-all active:scale-95"
             >
               <Wrench className="w-4 h-4" />
               <span>Jelajahi Semua Tools ({TOOLS.length})</span>
-            </Link>
+            </DynamicLink>
 
-            <Link
+            <DynamicLink
               href="/projects/prompts"
               className="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-white text-sm font-medium border border-slate-800 hover:border-slate-700 shadow-md transition-all active:scale-95"
             >
               <Sparkles className="w-4 h-4 text-indigo-400" />
               <span>Galeri Prompt AI</span>
-            </Link>
+            </DynamicLink>
           </div>
 
           {/* Value Badges */}
@@ -249,13 +250,13 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <Link
+            <DynamicLink
               href="/tools"
               className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 font-semibold group self-start sm:self-auto"
             >
               <span>Lihat Katalog Lengkap ({TOOLS.length} Tools)</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </Link>
+            </DynamicLink>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -287,13 +288,13 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <Link
+            <DynamicLink
               href="/projects/prompts"
               className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 font-semibold group self-start sm:self-auto"
             >
               <span>Buka Galeri Lengkap</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </Link>
+            </DynamicLink>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -323,13 +324,13 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <Link
+            <DynamicLink
               href="/projects/web"
               className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 font-semibold group self-start sm:self-auto"
             >
               <span>Lihat Semua Projek</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </Link>
+            </DynamicLink>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

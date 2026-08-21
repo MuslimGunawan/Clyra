@@ -10,12 +10,11 @@ import {
   Compass, 
   Layers, 
   Search, 
-  X,
-  PlusCircle,
-  Menu
+  X 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CommandPalette from "./CommandPalette";
+import DynamicLink from "./DynamicLink";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -50,7 +49,7 @@ export default function Navbar() {
               EARLY ACCESS
             </span>
             <span className="text-slate-300 truncate sm:overflow-visible">
-              Clyra Platform aktif dioptimalkan — cepat, aman, &amp; privat.
+              Clyra Platform aktif dioptimalkan — aman, terenkripsi, &amp; privat.
             </span>
           </div>
           <button
@@ -66,8 +65,8 @@ export default function Navbar() {
       {/* Main Top Header */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-[#08090d]/80 backdrop-blur-xl transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
+          {/* Brand Logo with Dynamic Ephemeral routing */}
+          <DynamicLink href="/" className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-500 p-[1px] shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-all duration-300">
               <div className="w-full h-full bg-[#090b10] rounded-[7px] flex items-center justify-center">
                 <Layers className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform duration-300" />
@@ -81,7 +80,7 @@ export default function Navbar() {
                 Productivity Hub
               </span>
             </div>
-          </Link>
+          </DynamicLink>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1 bg-slate-900/60 p-1 rounded-full border border-slate-800/70">
@@ -93,11 +92,11 @@ export default function Navbar() {
                   : pathname.startsWith(link.href);
 
               return (
-                <Link
+                <DynamicLink
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
+                    "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer",
                     isActive
                       ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm"
                       : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
@@ -110,7 +109,7 @@ export default function Navbar() {
                       {link.badge}
                     </span>
                   )}
-                </Link>
+                </DynamicLink>
               );
             })}
           </nav>
@@ -130,18 +129,18 @@ export default function Navbar() {
               </kbd>
             </button>
 
-            <Link
+            <DynamicLink
               href="/tools"
-              className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 transition-all active:scale-95"
+              className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 transition-all active:scale-95 cursor-pointer"
             >
               <Wrench className="w-3.5 h-3.5" />
               <span>Semua Tools</span>
-            </Link>
+            </DynamicLink>
           </div>
         </div>
       </header>
 
-      {/* Mobile Floating Bottom Navigation Bar (Ergonomic Thumb Reach) */}
+      {/* Mobile Floating Bottom Navigation Bar (Ergonomic Thumb Reach with Dynamic Tokens) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#08090d]/90 backdrop-blur-xl border-t border-slate-800/90 px-3 py-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl">
         <div className="flex items-center justify-around">
           {navLinks.map((link) => {
@@ -152,11 +151,11 @@ export default function Navbar() {
                 : pathname.startsWith(link.href);
 
             return (
-              <Link
+              <DynamicLink
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-all duration-200 min-w-[56px]",
+                  "flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-all duration-200 min-w-[56px] cursor-pointer",
                   isActive
                     ? "text-indigo-400 font-semibold"
                     : "text-slate-400 hover:text-slate-200"
@@ -175,7 +174,7 @@ export default function Navbar() {
                 <span className="text-[10px] font-medium tracking-tight">
                   {link.label}
                 </span>
-              </Link>
+              </DynamicLink>
             );
           })}
 

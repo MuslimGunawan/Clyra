@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowUpRight, Lock, Star, Flame } from "lucide-react";
 import { ToolItem } from "@/lib/types";
 import { IconHelper } from "./IconHelper";
 import { cn } from "@/lib/utils";
 import { recordToolUsage } from "@/lib/toolUsage";
+import DynamicLink from "./DynamicLink";
 
 interface ToolCardProps {
   tool: ToolItem;
@@ -21,7 +21,6 @@ export default function ToolCard({
   usageScore,
 }: ToolCardProps) {
   const isReady = tool.status === "ready";
-  const ContentWrapper = isReady ? Link : "div";
 
   const handleCardClick = () => {
     if (isReady) {
@@ -37,15 +36,38 @@ export default function ToolCard({
     }
   };
 
+  const targetUrl = isReady ? `/tools/${tool.slug}` : "#";
+
+  if (!isReady) {
+    return (
+      <div className="group relative flex flex-col justify-between p-5 rounded-2xl transition-all duration-300 border bg-[#0c0d14]/50 border-slate-800/40 opacity-75 cursor-not-allowed">
+        <div>
+          <div className="flex items-center justify-between mb-3.5">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-800/50 text-slate-500 border border-slate-700/30">
+              <IconHelper name={tool.iconName} className="w-5 h-5" />
+            </div>
+            {tool.badge && (
+              <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full font-semibold border bg-amber-500/10 text-amber-300 border-amber-500/30">
+                {tool.badge}
+              </span>
+            )}
+          </div>
+          <h3 className="text-base font-semibold tracking-tight text-slate-400 mb-1.5">{tool.name}</h3>
+          <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{tool.description}</p>
+        </div>
+        <div className="mt-4 pt-3 border-t border-slate-800/50 flex items-center justify-between text-xs">
+          <span className="text-[11px] text-slate-400 italic">Tahap Pengembangan</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <ContentWrapper
-      href={isReady ? `/tools/${tool.slug}` : "#"}
+    <DynamicLink
+      href={targetUrl}
       onClick={handleCardClick}
       className={cn(
-        "group relative flex flex-col justify-between p-5 rounded-2xl transition-all duration-300 border",
-        isReady
-          ? "bg-[#0f121d]/75 hover:bg-[#141828] border-slate-800/80 hover:border-indigo-500/50 hover:shadow-2xl hover:shadow-indigo-500/10 cursor-pointer"
-          : "bg-[#0c0d14]/50 border-slate-800/40 opacity-75 cursor-not-allowed"
+        "group relative flex flex-col justify-between p-5 rounded-2xl transition-all duration-300 border bg-[#0f121d]/75 hover:bg-[#141828] border-slate-800/80 hover:border-indigo-500/50 hover:shadow-2xl hover:shadow-indigo-500/10 cursor-pointer"
       )}
     >
       {/* Top Header */}
@@ -53,10 +75,7 @@ export default function ToolCard({
         <div className="flex items-center justify-between mb-3.5">
           <div
             className={cn(
-              "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
-              isReady
-                ? "bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20 group-hover:text-indigo-300 border border-indigo-500/20"
-                : "bg-slate-800/50 text-slate-500 border border-slate-700/30"
+              "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20 group-hover:text-indigo-300 border border-indigo-500/20"
             )}
           >
             <IconHelper name={tool.iconName} className="w-5 h-5" />
@@ -74,10 +93,7 @@ export default function ToolCard({
             {tool.badge && (
               <span
                 className={cn(
-                  "text-[10px] uppercase font-mono px-2 py-0.5 rounded-full font-semibold border",
-                  isReady
-                    ? "bg-indigo-500/10 text-indigo-300 border-indigo-500/30"
-                    : "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                  "text-[10px] uppercase font-mono px-2 py-0.5 rounded-full font-semibold border bg-indigo-500/10 text-indigo-300 border-indigo-500/30"
                 )}
               >
                 {tool.badge}
@@ -85,8 +101,9 @@ export default function ToolCard({
             )}
 
             {/* Pin Star Button */}
-            {isReady && onTogglePin && (
+            {onTogglePin && (
               <button
+                type="button"
                 onClick={handlePinClick}
                 className={cn(
                   "p-1 rounded-lg transition-colors border",
@@ -109,10 +126,7 @@ export default function ToolCard({
 
         <h3
           className={cn(
-            "text-base font-semibold tracking-tight transition-colors mb-1.5",
-            isReady
-              ? "text-slate-100 group-hover:text-indigo-300"
-              : "text-slate-400"
+            "text-base font-semibold tracking-tight transition-colors mb-1.5 text-slate-100 group-hover:text-indigo-300"
           )}
         >
           {tool.name}
@@ -136,15 +150,11 @@ export default function ToolCard({
           ))}
         </div>
 
-        {isReady ? (
-          <div className="flex items-center gap-1 text-indigo-400 text-xs font-medium group-hover:translate-x-0.5 transition-transform">
-            <span>Buka</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </div>
-        ) : (
-          <span className="text-[11px] text-slate-400 italic">Pengembangan</span>
-        )}
+        <div className="flex items-center gap-1 text-indigo-400 text-xs font-medium group-hover:translate-x-0.5 transition-transform">
+          <span>Buka</span>
+          <ArrowUpRight className="w-3.5 h-3.5" />
+        </div>
       </div>
-    </ContentWrapper>
+    </DynamicLink>
   );
 }

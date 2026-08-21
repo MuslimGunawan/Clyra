@@ -16,6 +16,7 @@ import { TOOLS } from "@/data/tools";
 import { PROMPTS } from "@/data/prompts";
 import { PROJECTS } from "@/data/projects";
 import { IconHelper } from "./IconHelper";
+import { createEphemeralToken } from "@/lib/cryptoTokens";
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -114,7 +115,8 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
   }, [query]);
 
   const handleSelect = (item: (typeof results)[0]) => {
-    router.push(item.url);
+    const dynamicToken = createEphemeralToken(item.url);
+    router.push(`/v/${dynamicToken}`);
     onClose();
   };
 
