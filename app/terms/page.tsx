@@ -1,4 +1,4 @@
-import Link from "next/link";
+import DynamicLink from "@/components/DynamicLink";
 import { Scale, ArrowLeft, ShieldAlert, ShieldCheck, FileText, CheckCircle2 } from "lucide-react";
 
 export const metadata = {
@@ -15,13 +15,13 @@ export default function TermsPage() {
       <main className="relative z-10 flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Back Link */}
         <div className="mb-6">
-          <Link
+          <DynamicLink
             href="/"
             className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-indigo-400 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Kembali ke Halaman Utama</span>
-          </Link>
+          </DynamicLink>
         </div>
 
         {/* Header */}

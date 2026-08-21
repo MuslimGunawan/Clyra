@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import Link from "next/link";
+import DynamicLink from "@/components/DynamicLink";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { TOOLS } from "@/data/tools";
@@ -77,13 +77,13 @@ export default async function ToolDetailPage({ params }: PageProps) {
       <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
         {/* Navigation Breadcrumb & Secure Obfuscated Identifier Badge */}
         <div className="mb-6 flex items-center justify-between">
-          <Link
+          <DynamicLink
             href="/tools"
             className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-indigo-400 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Kembali ke Direktori Tools</span>
-          </Link>
+          </DynamicLink>
 
           {tool.code && (
             <span className="text-[10px] font-mono text-slate-500 bg-slate-900/40 px-2 py-0.5 rounded border border-slate-800/60">

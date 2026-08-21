@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { Scale, Terminal, ShieldCheck } from "lucide-react";
+import DynamicLink from "@/components/DynamicLink";
+import { Scale, Terminal } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -12,24 +12,24 @@ export default function Footer() {
             <span className="text-slate-400">Personal Workspace &amp; Tool Hub</span>
           </div>
           <p className="text-slate-500 text-[11px]">
-            Dirancang minimalis, efisien, 100% Client-side safe &amp; siap di-deploy ke Vercel.
+            Dirancang minimalis, efisien, 100% Client-side safe &amp; terenkripsi.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-6 text-xs">
-          <Link href="/tools" className="hover:text-indigo-400 transition-colors">
+          <DynamicLink href="/tools" className="hover:text-indigo-400 transition-colors">
             Semua Tools
-          </Link>
-          <Link href="/projects/prompts" className="hover:text-indigo-400 transition-colors">
+          </DynamicLink>
+          <DynamicLink href="/projects/prompts" className="hover:text-indigo-400 transition-colors">
             AI Prompts
-          </Link>
-          <Link href="/projects/web" className="hover:text-indigo-400 transition-colors">
+          </DynamicLink>
+          <DynamicLink href="/projects/web" className="hover:text-indigo-400 transition-colors">
             Web Works
-          </Link>
-          <Link href="/terms" className="text-slate-500 hover:text-indigo-300 transition-colors flex items-center gap-1">
+          </DynamicLink>
+          <DynamicLink href="/terms" className="text-slate-500 hover:text-indigo-300 transition-colors flex items-center gap-1">
             <Scale className="w-3.5 h-3.5" />
             <span>Syarat &amp; Disclaimer</span>
-          </Link>
+          </DynamicLink>
         </div>
 
         <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono">
