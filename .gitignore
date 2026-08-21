@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# media downloads & player scripts
+*-player-script.js
+/public/downloads/*
+!/public/downloads/.gitkeep
+
