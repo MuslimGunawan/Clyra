@@ -1,12 +1,15 @@
 /**
- * Clyra Security Hardening Utilities
+ * Clyra Security Hardening & Obfuscation Utilities
  * Defends against:
  * 1. SSRF (Server-Side Request Forgery)
  * 2. Path Traversal & Arbitrary File Overwrite
  * 3. CLI Argument Injection
  * 4. Stored & DOM XSS
  * 5. DoS / API Request Flooding (Rate Limiting)
+ * 6. File Structure & Target URL Obfuscation (Tokenized & Hashed URIs)
  */
+
+import crypto from "crypto";
 
 // In-memory rate limiting store
 interface RateLimitEntry {
@@ -30,13 +33,10 @@ if (typeof setInterval !== "undefined") {
 
 /**
  * Basic in-memory rate limiter
- * @param identifier Client IP or token
- * @param maxRequests Maximum requests per window
- * @param windowMs Time window in milliseconds (default: 1 minute)
  */
 export function checkRateLimit(
   identifier: string,
-  maxRequests = 20,
+  maxRequests = 30,
   windowMs = 60 * 1000
 ): { allowed: boolean; remaining: number } {
   const now = Date.now();
@@ -53,6 +53,49 @@ export function checkRateLimit(
 
   entry.count += 1;
   return { allowed: true, remaining: maxRequests - entry.count };
+}
+
+/**
+ * Generates an elegant, cryptographically random obfuscated alphanumeric token (e.g. `cly_8f9a2e1d7c4b`)
+ */
+export function generateObfuscatedId(prefix = "cly", length = 12): string {
+  const bytes = crypto.randomBytes(Math.ceil(length / 2));
+  const hex = bytes.toString("hex").slice(0, length);
+  return `${prefix}_${hex}`;
+}
+
+/**
+ * Encodes an object payload into a clean, URL-safe base64 token
+ * This hides internal URLs and parameter structures from direct inspection.
+ */
+export function encodeObfuscatedToken(payload: Record<string, any>): string {
+  try {
+    const jsonStr = JSON.stringify(payload);
+    return Buffer.from(jsonStr, "utf-8")
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Decodes an obfuscated URL-safe token back to an object payload.
+ */
+export function decodeObfuscatedToken<T = any>(token: string): T | null {
+  try {
+    if (!token || typeof token !== "string") return null;
+    let base64 = token.replace(/-/g, "+").replace(/_/g, "/");
+    while (base64.length % 4) {
+      base64 += "=";
+    }
+    const jsonStr = Buffer.from(base64, "base64").toString("utf-8");
+    return JSON.parse(jsonStr) as T;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -85,17 +128,11 @@ export function isSafePublicUrl(urlString: string): boolean {
     }
 
     // 3. Reject IPv4 Private, Loopback, Link-Local ranges
-    // Loopback: 127.0.0.0/8
     if (/^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return false;
-    // Private Class A: 10.0.0.0/8
     if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return false;
-    // Private Class B: 172.16.0.0/12 (172.16.x.x - 172.31.x.x)
     if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)) return false;
-    // Private Class C: 192.168.0.0/16
     if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) return false;
-    // Link-Local / Cloud IMDS: 169.254.0.0/16
     if (/^169\.254\.\d{1,3}\.\d{1,3}$/.test(hostname)) return false;
-    // Current Network: 0.0.0.0/8
     if (/^0\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return false;
 
     // 4. Reject IPv6 loopback, link-local, unique local
@@ -123,7 +160,6 @@ export function isSafePublicUrl(urlString: string): boolean {
  */
 export function sanitizeFilename(name: string, fallback = "media_file"): string {
   if (!name || typeof name !== "string") return fallback;
-  // Replace anything that is not alphanumeric, underscore, or hyphen
   const cleaned = name
     .replace(/[^a-zA-Z0-9_-]/g, "_")
     .replace(/_{2,}/g, "_")
@@ -156,16 +192,11 @@ export function sanitizeSvg(svgContent: string): string {
   if (!svgContent || typeof svgContent !== "string") return "";
 
   return svgContent
-    // Remove script tags and content
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    // Remove foreignObject
     .replace(/<foreignObject\b[^<]*(?:(?!<\/foreignObject>)<[^<]*)*<\/foreignObject>/gi, "")
-    // Remove iframe/object/embed/applet
     .replace(/<(iframe|object|embed|applet|meta|link|style)\b[^>]*>/gi, "")
     .replace(/<\/(iframe|object|embed|applet|meta|link|style)>/gi, "")
-    // Remove on* event handlers (e.g. onload, onerror, onclick)
     .replace(/\son\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, "")
-    // Remove javascript: URIs
     .replace(/href\s*=\s*['"]\s*javascript:[^'"]*['"]/gi, 'href="#"')
     .replace(/xlink:href\s*=\s*['"]\s*javascript:[^'"]*['"]/gi, 'xlink:href="#"');
 }

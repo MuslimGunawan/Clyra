@@ -3,7 +3,13 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import fs from "fs";
 import path from "path";
-import { isSafePublicUrl, sanitizeFilename, checkRateLimit } from "@/lib/security";
+import { 
+  isSafePublicUrl, 
+  sanitizeFilename, 
+  checkRateLimit, 
+  generateObfuscatedId, 
+  encodeObfuscatedToken 
+} from "@/lib/security";
 
 const execFileAsync = promisify(execFile);
 
@@ -47,7 +53,7 @@ function cleanupDownloadsDir(downloadsDir: string) {
   }
 }
 
-// Download Media in-house with FFmpeg lossless stream passthrough (100% Original Source Quality)
+// Download Media in-house with FFmpeg lossless stream passthrough & Obfuscated Tokenized storage
 async function downloadInHouseMedia(
   targetUrl: string,
   rawTitle: string,
@@ -55,7 +61,8 @@ async function downloadInHouseMedia(
   isInstagram = false
 ): Promise<string | null> {
   try {
-    const safeTitle = sanitizeFilename(rawTitle, `clyra_${Date.now()}`);
+    // Generate an elegant, non-guessable alphanumeric hash for physical storage
+    const obfuscatedKey = generateObfuscatedId("cly", 16);
     const downloadsDir = path.resolve(process.cwd(), "public", "downloads");
     
     if (!fs.existsSync(downloadsDir)) {
@@ -65,23 +72,17 @@ async function downloadInHouseMedia(
     }
 
     const ext = type === "audio" ? "mp3" : "mp4";
-    const outputFile = path.resolve(downloadsDir, `${safeTitle}.${ext}`);
+    const outputFile = path.resolve(downloadsDir, `${obfuscatedKey}.${ext}`);
 
     // Path traversal defense check
     if (!outputFile.startsWith(downloadsDir)) {
       throw new Error("Invalid output file path target.");
     }
 
-    // If file already exists and is healthy (>100KB), return immediately
-    if (fs.existsSync(outputFile) && fs.statSync(outputFile).size > 100000) {
-      return `/downloads/${encodeURIComponent(safeTitle)}.${ext}`;
-    }
-
     const ffmpegPath = await getFfmpegPath();
     const ffmpegArgs = ffmpegPath ? ["--ffmpeg-location", ffmpegPath] : [];
 
     if (type === "audio") {
-      // Pure MP3 audio extraction with highest bitrate (320kbps)
       const extractorArgs = isInstagram
         ? []
         : ["--extractor-args", "youtube:player_client=web_embedded,android"];
@@ -109,7 +110,6 @@ async function downloadInHouseMedia(
         { timeout: 70000 }
       );
     } else {
-      // 100% Original Lossless Quality (No Compression)
       const extractorArgs = isInstagram
         ? []
         : ["--extractor-args", "youtube:player_client=web_embedded,android"];
@@ -136,7 +136,7 @@ async function downloadInHouseMedia(
     }
 
     if (fs.existsSync(outputFile)) {
-      return `/downloads/${encodeURIComponent(safeTitle)}.${ext}`;
+      return `/downloads/${obfuscatedKey}.${ext}`;
     }
   } catch (err) {
     console.error("Local media processing error:", err);
@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. ACTION: ON-DEMAND IN-HOUSE DOWNLOAD (Triggered when user clicks Download)
+    // 3. ACTION: ON-DEMAND IN-HOUSE DOWNLOAD
     if (action === "download_stream") {
       const isIg = Boolean(isInstagram || rawUrl.includes("instagram.com"));
       let cleanTargetUrl = rawUrl;
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Gagal merender file media." }, { status: 500 });
     }
 
-    // 4. INSTAGRAM EXTRACTION (Reel, Post, TV, Carousel via In-House Metadata Engine)
+    // 4. INSTAGRAM EXTRACTION
     if (rawUrl.includes("instagram.com")) {
       const isReel = rawUrl.includes("/reel/") || rawUrl.includes("/reels/");
       const isStory = rawUrl.includes("/stories/");
@@ -240,7 +240,12 @@ export async function POST(req: NextRequest) {
       }
 
       const safeTitle = sanitizeFilename(`IG_${igAuthor.replace("@", "")}_${igTitle}`, `IG_${Date.now()}`);
-      const coverDownloadUrl = `/api/media/download?type=direct&url=${encodeURIComponent(igThumb)}&filename=${encodeURIComponent(safeTitle)}_cover.jpg`;
+      const coverToken = encodeObfuscatedToken({
+        url: igThumb,
+        filename: `${safeTitle}_cover.jpg`,
+        type: "direct",
+      });
+      const coverDownloadUrl = `/api/media/download?token=${coverToken}`;
 
       return NextResponse.json({
         title: igTitle || (isReel ? "Instagram Reel Video" : "Instagram Post Media"),
@@ -258,7 +263,7 @@ export async function POST(req: NextRequest) {
             size: "Kualitas Asli Source",
             type: "video",
             label: isReel ? "Download Video Reel Kualitas Penuh" : "Download Video Instagram Asli",
-            directDownloadUrl: `/downloads/${encodeURIComponent(safeTitle)}.mp4`,
+            directDownloadUrl: `/downloads/${generateObfuscatedId("cly_ig")}.mp4`,
             filename: `${safeTitle}.mp4`,
             safeTitle,
             needsProcessing: true,
@@ -272,7 +277,7 @@ export async function POST(req: NextRequest) {
             size: "Audio 320kbps",
             type: "audio",
             label: "Download Musik / Audio Instagram Saja",
-            directDownloadUrl: `/downloads/${encodeURIComponent(safeTitle)}.mp3`,
+            directDownloadUrl: `/downloads/${generateObfuscatedId("cly_ig_aud")}.mp3`,
             filename: `${safeTitle}.mp3`,
             safeTitle,
             needsProcessing: true,
@@ -294,7 +299,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 5. TIKTOK EXTRACTION (TikWM API -> 100% Direct No Watermark)
+    // 5. TIKTOK EXTRACTION
     if (rawUrl.includes("tiktok.com")) {
       try {
         const tikRes = await fetch(
@@ -310,7 +315,12 @@ export async function POST(req: NextRequest) {
           const musicUrl = t.music ? (t.music.startsWith("http") ? t.music : `https://www.tikwm.com${t.music}`) : null;
           const coverUrl = t.cover.startsWith("http") ? t.cover : `https://www.tikwm.com${t.cover}`;
           const safeTitle = sanitizeFilename(t.title || "tiktok_video", "tiktok_video");
-          const coverDownloadUrl = `/api/media/download?type=direct&url=${encodeURIComponent(coverUrl)}&filename=${encodeURIComponent(safeTitle)}_cover.jpg`;
+          const coverToken = encodeObfuscatedToken({
+            url: coverUrl,
+            filename: `${safeTitle}_cover.jpg`,
+            type: "direct",
+          });
+          const coverDownloadUrl = `/api/media/download?token=${coverToken}`;
 
           return NextResponse.json({
             title: t.title || "TikTok Video Tanpa Watermark",
@@ -377,7 +387,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 6. YOUTUBE EXTRACTION (100% Lossless Source Quality)
+    // 6. YOUTUBE EXTRACTION
     if (rawUrl.includes("youtube.com") || rawUrl.includes("youtu.be")) {
       const ytId = getYouTubeId(rawUrl);
       if (!ytId) {
@@ -390,7 +400,6 @@ export async function POST(req: NextRequest) {
       let videoAuthor = "YouTube Creator";
       let videoThumb = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
 
-      // Official YouTube OEmbed Resolver for exact title and author
       try {
         const oembedRes = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(cleanYtUrl)}&format=json`);
         if (oembedRes.ok) {
@@ -402,7 +411,12 @@ export async function POST(req: NextRequest) {
       } catch (e) {}
 
       const safeTitle = sanitizeFilename(videoTitle, `yt_${ytId}`);
-      const coverDownloadUrl = `/api/media/download?type=direct&url=${encodeURIComponent(videoThumb)}&filename=${encodeURIComponent(safeTitle)}_thumb.jpg`;
+      const coverToken = encodeObfuscatedToken({
+        url: videoThumb,
+        filename: `${safeTitle}_thumb.jpg`,
+        type: "direct",
+      });
+      const coverDownloadUrl = `/api/media/download?token=${coverToken}`;
 
       return NextResponse.json({
         title: videoTitle,
@@ -420,7 +434,7 @@ export async function POST(req: NextRequest) {
             size: "Original Bitrate (Tanpa Kompresi)",
             type: "video",
             label: "Download Video MP4 Kualitas Penuh",
-            directDownloadUrl: `/downloads/${encodeURIComponent(safeTitle)}.mp4`,
+            directDownloadUrl: `/downloads/${generateObfuscatedId("cly_yt")}.mp4`,
             filename: `${safeTitle}.mp4`,
             safeTitle,
             needsProcessing: true,
@@ -433,7 +447,7 @@ export async function POST(req: NextRequest) {
             size: "320kbps MP3",
             type: "audio",
             label: "Download Lagu / Musik MP3 Murni",
-            directDownloadUrl: `/downloads/${encodeURIComponent(safeTitle)}.mp3`,
+            directDownloadUrl: `/downloads/${generateObfuscatedId("cly_yt_aud")}.mp3`,
             filename: `${safeTitle}.mp3`,
             safeTitle,
             needsProcessing: true,
@@ -470,7 +484,12 @@ export async function POST(req: NextRequest) {
     } catch (e) {}
 
     const safeTitle = sanitizeFilename(genericTitle, `media_${Date.now()}`);
-    const coverDownloadUrl = `/api/media/download?type=direct&url=${encodeURIComponent(genericThumb)}&filename=${encodeURIComponent(safeTitle)}_cover.jpg`;
+    const coverToken = encodeObfuscatedToken({
+      url: genericThumb,
+      filename: `${safeTitle}_cover.jpg`,
+      type: "direct",
+    });
+    const coverDownloadUrl = `/api/media/download?token=${coverToken}`;
 
     return NextResponse.json({
       title: genericTitle,
@@ -486,7 +505,7 @@ export async function POST(req: NextRequest) {
           size: "Direct Stream",
           type: "video",
           label: "Download Video File",
-          directDownloadUrl: `/downloads/${encodeURIComponent(safeTitle)}.mp4`,
+          directDownloadUrl: `/downloads/${generateObfuscatedId("cly_gen")}.mp4`,
           filename: `${safeTitle}.mp4`,
           safeTitle,
           needsProcessing: true,
@@ -499,7 +518,7 @@ export async function POST(req: NextRequest) {
           size: "Audio File",
           type: "audio",
           label: "Download Audio Saja",
-          directDownloadUrl: `/downloads/${encodeURIComponent(safeTitle)}.mp3`,
+          directDownloadUrl: `/downloads/${generateObfuscatedId("cly_gen_aud")}.mp3`,
           filename: `${safeTitle}.mp3`,
           safeTitle,
           needsProcessing: true,

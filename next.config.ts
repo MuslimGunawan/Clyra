@@ -28,6 +28,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Hide Next.js server fingerprinting header for security
+  poweredByHeader: false,
+  // Ensure internal source code files are never leaked to public browser DevTools
+  productionBrowserSourceMaps: false,
+
   async headers() {
     return [
       {

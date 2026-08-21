@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { isSafePublicUrl, sanitizeFilename, checkRateLimit } from "@/lib/security";
+import { 
+  isSafePublicUrl, 
+  sanitizeFilename, 
+  checkRateLimit, 
+  decodeObfuscatedToken 
+} from "@/lib/security";
 
 const execFileAsync = promisify(execFile);
 
@@ -45,10 +50,29 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const type = searchParams.get("type"); // "youtube" | "direct"
-  const urlParam = searchParams.get("url");
-  const isAudio = searchParams.get("format") === "audio";
-  const rawFilename = searchParams.get("filename") || (isAudio ? "clyra_audio.mp3" : "clyra_media.mp4");
+  const tokenParam = searchParams.get("token");
+
+  let type = searchParams.get("type"); // "youtube" | "direct"
+  let urlParam = searchParams.get("url");
+  let isAudio = searchParams.get("format") === "audio";
+  let rawFilename = searchParams.get("filename") || (isAudio ? "clyra_audio.mp3" : "clyra_media.mp4");
+
+  // 2. Decode Obfuscated Token if present
+  if (tokenParam) {
+    const decoded = decodeObfuscatedToken<{
+      url?: string;
+      type?: string;
+      filename?: string;
+      format?: string;
+    }>(tokenParam);
+
+    if (decoded) {
+      if (decoded.url) urlParam = decoded.url;
+      if (decoded.type) type = decoded.type;
+      if (decoded.filename) rawFilename = decoded.filename;
+      if (decoded.format === "audio") isAudio = true;
+    }
+  }
 
   // Sanitize filename & extension
   const extMatch = rawFilename.match(/\.([a-zA-Z0-9]+)$/);
@@ -56,7 +80,7 @@ export async function GET(req: NextRequest) {
   const baseNameWithoutExt = rawFilename.replace(/\.[^/.]+$/, "");
   const safeFilename = `${sanitizeFilename(baseNameWithoutExt, "clyra_download")}.${ext}`;
 
-  // 2. SSRF Protection: Validate target URL
+  // 3. SSRF Protection: Validate target URL
   if (!urlParam || !isSafePublicUrl(urlParam)) {
     return NextResponse.json(
       { error: "URL target tidak valid atau tidak diizinkan." },
@@ -64,7 +88,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // 3. IN-HOUSE DIRECT STREAM PIPE (Cover Images, Videos, Audio)
+  // 4. IN-HOUSE DIRECT STREAM PIPE (Cover Images, Videos, Audio)
   if (urlParam && type !== "youtube") {
     try {
       const upstreamRes = await fetch(urlParam, {
@@ -103,7 +127,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 4. YOUTUBE DIRECT ENGINE
+  // 5. YOUTUBE DIRECT ENGINE
   if (type === "youtube" && urlParam) {
     const directStreamUrl = await getDirectYtDlpStream(urlParam, isAudio);
     if (directStreamUrl && isSafePublicUrl(directStreamUrl)) {
