@@ -9,6 +9,7 @@ export interface ToolItem {
   iconName: string;
   status: "ready" | "coming_soon" | "beta";
   badge?: string;
+  code?: string;
   tags: string[];
 }
 

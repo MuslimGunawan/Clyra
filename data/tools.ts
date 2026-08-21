@@ -4,6 +4,7 @@ export const TOOLS: ToolItem[] = [
   {
     id: "media-downloader",
     slug: "media-downloader",
+    code: "cly_8f2a",
     name: "Universal Media & Video Downloader",
     description: "Download video & audio resolusi tinggi (1080p, 4K, MP3) dari TikTok (tanpa watermark), YouTube, Instagram, Facebook, dan X/Twitter.",
     category: "media",
@@ -15,6 +16,7 @@ export const TOOLS: ToolItem[] = [
   {
     id: "image-compressor",
     slug: "image-compressor",
+    code: "cly_9b1c",
     name: "Image Compressor & Optimizer",
     description: "Kompresi ukuran file gambar PNG, JPG, WebP langsung di browser dengan Target Ukuran KB presisi, tanpa batasan ukuran & tanpa watermark.",
     category: "media",
@@ -26,6 +28,7 @@ export const TOOLS: ToolItem[] = [
   {
     id: "qr-generator",
     slug: "qr-generator",
+    code: "cly_4e7f",
     name: "QR Code Studio with Logo",
     description: "Generator kode QR resolusi ultra HD dengan custom logo/foto di tengah, Wi-Fi otomatis, vCard, dan tanpa watermark atau langganan.",
     category: "generator",
@@ -37,6 +40,7 @@ export const TOOLS: ToolItem[] = [
   {
     id: "json-formatter",
     slug: "json-formatter",
+    code: "cly_1a5d",
     name: "JSON Formatter & TypeScript Generator",
     description: "Format, beautify, minify, validasi JSON, dan generate otomatis TypeScript Interfaces/Types instan tanpa batas request.",
     category: "formatter",
@@ -48,6 +52,7 @@ export const TOOLS: ToolItem[] = [
   {
     id: "color-palette",
     slug: "color-palette",
+    code: "cly_6c9e",
     name: "Color & Palette Studio",
     description: "Generator palet warna harmonis, converter HEX/RGB/HSL/CSS, dan WCAG 2.1 contrast accessibility matrix.",
     category: "generator",
@@ -59,6 +64,7 @@ export const TOOLS: ToolItem[] = [
   {
     id: "hash-generator",
     slug: "hash-generator",
+    code: "cly_3d2b",
     name: "Hash, UUID & Password Studio",
     description: "Kriptografi SHA-256/512 hashes via WebCrypto, bulk 100+ UUID v4 generator, dan secure entropy password generator.",
     category: "security",
@@ -70,6 +76,7 @@ export const TOOLS: ToolItem[] = [
   {
     id: "image-converter",
     slug: "image-converter",
+    code: "cly_7f8a",
     name: "Image Format Converter",
     description: "Konversi format gambar instan antara PNG, JPG, WebP, SVG, dan Favicon ICO dengan resolusi tetap tajam tanpa limit harian.",
     category: "converter",
@@ -81,6 +88,7 @@ export const TOOLS: ToolItem[] = [
   {
     id: "markdown-previewer",
     slug: "markdown-previewer",
+    code: "cly_2e4c",
     name: "Markdown Live Studio",
     description: "Editor markdown dengan live rendered HTML preview, word counter, estimasi waktu baca, dan export ke .md atau .html.",
     category: "formatter",
@@ -92,6 +100,7 @@ export const TOOLS: ToolItem[] = [
   {
     id: "svg-converter",
     slug: "svg-converter",
+    code: "cly_5b1a",
     name: "SVG to JSX & CSS Data URI",
     description: "Ubah kode SVG atau file SVG ke React/Next.js JSX Component type-safe dan CSS Background Data URI.",
     category: "developer",
@@ -103,6 +112,7 @@ export const TOOLS: ToolItem[] = [
   {
     id: "text-case-converter",
     slug: "text-case-converter",
+    code: "cly_0a9f",
     name: "Case & Text Transformer",
     description: "Ubah format teks instan: UPPERCASE, lowercase, camelCase, kebab-case, snake_case, PascalCase, Title Case, dan statistik kata.",
     category: "converter",
@@ -114,6 +124,7 @@ export const TOOLS: ToolItem[] = [
   {
     id: "base64-codec",
     slug: "base64-codec",
+    code: "cly_8c3d",
     name: "Base64 & URL Encoder",
     description: "Encode & decode string atau teks ke Base64, URL Encoding, dan Hex secara instan dan aman di browser.",
     category: "developer",

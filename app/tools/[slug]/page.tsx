@@ -21,14 +21,14 @@ interface PageProps {
 }
 
 export async function generateStaticParams() {
-  return TOOLS.map((tool) => ({
-    slug: tool.slug,
-  }));
+  const slugs = TOOLS.map((tool) => ({ slug: tool.slug }));
+  const codes = TOOLS.filter((tool) => tool.code).map((tool) => ({ slug: tool.code! }));
+  return [...slugs, ...codes];
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const tool = TOOLS.find((t) => t.slug === slug);
+  const tool = TOOLS.find((t) => t.slug === slug || t.code === slug);
 
   if (!tool) {
     return {
@@ -60,11 +60,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ToolDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const tool = TOOLS.find((t) => t.slug === slug);
+  const tool = TOOLS.find((t) => t.slug === slug || t.code === slug);
 
   if (!tool) {
     notFound();
   }
+
+  const activeSlug = tool.slug;
 
   return (
     <div className="min-h-screen bg-[#08090d] text-slate-100 flex flex-col">
@@ -73,8 +75,8 @@ export default async function ToolDetailPage({ params }: PageProps) {
       <div className="fixed inset-0 bg-grid-pattern opacity-40 pointer-events-none" />
 
       <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-        {/* Navigation Breadcrumb */}
-        <div className="mb-6">
+        {/* Navigation Breadcrumb & Secure Obfuscated Identifier Badge */}
+        <div className="mb-6 flex items-center justify-between">
           <Link
             href="/tools"
             className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-indigo-400 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800 transition-colors"
@@ -82,6 +84,12 @@ export default async function ToolDetailPage({ params }: PageProps) {
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Kembali ke Direktori Tools</span>
           </Link>
+
+          {tool.code && (
+            <span className="text-[10px] font-mono text-slate-500 bg-slate-900/40 px-2 py-0.5 rounded border border-slate-800/60">
+              ID: {tool.code}
+            </span>
+          )}
         </div>
 
         {/* Header Information */}
@@ -124,17 +132,17 @@ export default async function ToolDetailPage({ params }: PageProps) {
 
         {/* Tool Implementation Container */}
         <div>
-          {slug === "media-downloader" && <MediaDownloader />}
-          {slug === "text-case-converter" && <TextCaseConverter />}
-          {slug === "base64-codec" && <Base64Codec />}
-          {slug === "image-compressor" && <ImageCompressor />}
-          {slug === "image-converter" && <ImageConverter />}
-          {slug === "json-formatter" && <JsonFormatter />}
-          {slug === "color-palette" && <ColorStudio />}
-          {slug === "hash-generator" && <HashPasswordGenerator />}
-          {slug === "markdown-previewer" && <MarkdownEditor />}
-          {slug === "svg-converter" && <SvgConverter />}
-          {slug === "qr-generator" && <QrGenerator />}
+          {activeSlug === "media-downloader" && <MediaDownloader />}
+          {activeSlug === "text-case-converter" && <TextCaseConverter />}
+          {activeSlug === "base64-codec" && <Base64Codec />}
+          {activeSlug === "image-compressor" && <ImageCompressor />}
+          {activeSlug === "image-converter" && <ImageConverter />}
+          {activeSlug === "json-formatter" && <JsonFormatter />}
+          {activeSlug === "color-palette" && <ColorStudio />}
+          {activeSlug === "hash-generator" && <HashPasswordGenerator />}
+          {activeSlug === "markdown-previewer" && <MarkdownEditor />}
+          {activeSlug === "svg-converter" && <SvgConverter />}
+          {activeSlug === "qr-generator" && <QrGenerator />}
         </div>
       </main>
     </div>
