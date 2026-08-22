@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ToastProvider } from "@/components/ToastProvider";
 import TermsGatekeeper from "@/components/TermsGatekeeper";
+import SecurityShield from "@/components/SecurityShield";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -145,6 +146,7 @@ export default function RootLayout({
         className="min-h-full flex flex-col bg-[#08090d] text-slate-100 selection:bg-indigo-500/30 selection:text-white"
       >
         <ToastProvider>
+          <SecurityShield />
           <Navbar />
           <div className="flex-1 flex flex-col">{children}</div>
           <Footer />

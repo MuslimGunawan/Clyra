@@ -32,6 +32,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Ensure internal source code files are never leaked to public browser DevTools
   productionBrowserSourceMaps: false,
+  // Remove all console statements in production to prevent leaking internal logic
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error"] } : false,
+  },
 
   async headers() {
     return [
