@@ -12,27 +12,38 @@ import {
   XCircle, 
   Pipette, 
   Upload, 
-  Download, 
   Layers, 
   Code2, 
-  SunMedium, 
-  Contrast, 
-  Wand2, 
   ShieldCheck, 
-  Zap, 
-  FileCode2,
-  Maximize2
+  ArrowRight,
+  Eye
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ToastProvider";
 
 type StudioTab = "harmonies" | "shades" | "gradient" | "image_extract" | "wcag";
 
+// Helper to strictly sanitize and normalize HEX color strings to valid #RRGGBB
+const normalizeHex = (raw: string, fallback = "#6366F1"): string => {
+  if (!raw) return fallback;
+  let clean = raw.trim().replace(/^#+/, "").replace(/[^0-9a-fA-F]/g, "");
+  if (clean.length === 3) {
+    clean = clean.split("").map((c) => c + c).join("");
+  }
+  if (clean.length > 6) {
+    clean = clean.substring(0, 6);
+  }
+  if (clean.length === 6) {
+    return `#${clean.toUpperCase()}`;
+  }
+  return clean ? `#${clean.toUpperCase()}` : fallback;
+};
+
 export default function ColorStudio() {
   const { showToast } = useToast();
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  // Master Color State (Hex)
+  // Master Color State
   const [color, setColor] = useState<string>("#6366F1");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<StudioTab>("harmonies");
@@ -46,7 +57,6 @@ export default function ColorStudio() {
 
   // Extracted Palette from Image
   const [extractedColors, setExtractedColors] = useState<string[]>([]);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
   // Copy helper
   const copyVal = async (text: string, key: string) => {
@@ -60,11 +70,14 @@ export default function ColorStudio() {
     }
   };
 
-  // Convert Hex to RGB, HSL, HSV, CMYK, OKLCH
+  // Convert Hex to RGB, HSL, HSV, CMYK, CSS Var with 100% Robust Sanitization
   const colorData = useMemo(() => {
-    let cleanHex = color.trim().replace(/^#/, "");
+    let cleanHex = color.trim().replace(/^#+/, "").replace(/[^0-9a-fA-F]/g, "");
     if (cleanHex.length === 3) {
       cleanHex = cleanHex.split("").map((c) => c + c).join("");
+    }
+    if (cleanHex.length > 6) {
+      cleanHex = cleanHex.substring(0, 6);
     }
     if (cleanHex.length !== 6) {
       cleanHex = "6366F1";
@@ -186,14 +199,16 @@ export default function ColorStudio() {
       };
     });
 
+    const validHex = `#${cleanHex.toUpperCase()}`;
+
     return {
-      hex: `#${cleanHex.toUpperCase()}`,
+      hex: validHex,
       rgb: `rgb(${r}, ${g}, ${b})`,
       rgba: `rgba(${r}, ${g}, ${b}, 1)`,
       hsl: `hsl(${hDeg}, ${sPct}%, ${lPct}%)`,
       hsv: `hsv(${hDeg}°, ${sHsvPct}%, ${vPct}%)`,
       cmyk: `cmyk(${cCmyk}%, ${mCmyk}%, ${yCmyk}%, ${kCmykPct}%)`,
-      cssVar: `--color-primary: #${cleanHex.toUpperCase()};`,
+      cssVar: `--color-primary: ${validHex};`,
       contrastWhite: contrastWhite.toFixed(2),
       contrastBlack: contrastBlack.toFixed(2),
       contrastDarkUi: contrastDarkUi.toFixed(2),
@@ -202,16 +217,20 @@ export default function ColorStudio() {
     };
   }, [color]);
 
-  // Gradient CSS computation
+  // Robust Gradient CSS Computation (Always Clean and Valid)
   const gradientCss = useMemo(() => {
+    const c1 = normalizeHex(colorData.hex, "#6366F1");
+    const c2 = normalizeHex(gradColor2, "#EC4899");
+    const c3 = normalizeHex(gradColor3, "#38BDF8");
+
     if (gradType === "linear") {
       return useThreeStops
-        ? `linear-gradient(${gradAngle}deg, ${colorData.hex} 0%, ${gradColor2} 50%, ${gradColor3} 100%)`
-        : `linear-gradient(${gradAngle}deg, ${colorData.hex} 0%, ${gradColor2} 100%)`;
+        ? `linear-gradient(${gradAngle}deg, ${c1} 0%, ${c2} 50%, ${c3} 100%)`
+        : `linear-gradient(${gradAngle}deg, ${c1} 0%, ${c2} 100%)`;
     }
     return useThreeStops
-      ? `radial-gradient(circle at center, ${colorData.hex} 0%, ${gradColor2} 50%, ${gradColor3} 100%)`
-      : `radial-gradient(circle at center, ${colorData.hex} 0%, ${gradColor2} 100%)`;
+      ? `radial-gradient(circle at center, ${c1} 0%, ${c2} 50%, ${c3} 100%)`
+      : `radial-gradient(circle at center, ${c1} 0%, ${c2} 100%)`;
   }, [gradType, gradAngle, colorData.hex, gradColor2, gradColor3, useThreeStops]);
 
   // Random Color Generator
@@ -227,8 +246,6 @@ export default function ColorStudio() {
     if (!file) return;
 
     const url = URL.createObjectURL(file);
-    setImagePreviewUrl(url);
-
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
@@ -322,7 +339,7 @@ export default function ColorStudio() {
               <input
                 type="color"
                 value={colorData.hex}
-                onChange={(e) => setColor(e.target.value.toUpperCase())}
+                onChange={(e) => setColor(normalizeHex(e.target.value))}
                 className="w-28 h-28 rounded-3xl cursor-pointer bg-transparent border-0 opacity-0 absolute inset-0 z-10"
               />
               <div
@@ -338,8 +355,15 @@ export default function ColorStudio() {
               <span className="text-xs font-mono text-slate-500 font-bold">#</span>
               <input
                 type="text"
-                value={colorData.hex.replace("#", "")}
-                onChange={(e) => setColor(`#${e.target.value}`)}
+                value={color.replace(/^#+/, "")}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6);
+                  setColor(val ? `#${val.toUpperCase()}` : "#");
+                }}
+                onBlur={() => {
+                  setColor(normalizeHex(color));
+                }}
+                placeholder="6366F1"
                 maxLength={6}
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white font-mono text-center font-bold focus:border-indigo-500 outline-none uppercase"
               />
@@ -382,7 +406,7 @@ export default function ColorStudio() {
 
       {/* 3. STUDIO TABS (Harmonies, Shades, Gradient, Image Extractor, WCAG) */}
       <div className="space-y-6">
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs (Responsive Flex-Wrap) */}
         <div className="flex flex-wrap items-center gap-2 bg-[#0e111a] p-2 rounded-2xl border border-slate-800 text-xs">
           {[
             { id: "harmonies", label: "1. Harmoni Warna", icon: Sparkles },
@@ -418,32 +442,55 @@ export default function ColorStudio() {
               <span className="text-xs font-bold text-white uppercase font-mono tracking-wider">
                 Skema Harmoni Teori Warna (Color Wheel)
               </span>
-              <span className="text-[11px] text-slate-400 font-mono">Klik warna untuk menyalin HEX</span>
+              <span className="text-[11px] text-slate-400 font-mono">Klik kartu untuk memilih / menyalin</span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3.5">
               {colorData.harmonies.map((p, idx) => (
                 <div
                   key={idx}
-                  onClick={() => copyVal(p.value, `harmony-${idx}`)}
-                  className="p-4 bg-[#08090d] border border-slate-800 rounded-2xl space-y-2.5 group cursor-pointer hover:border-indigo-500/50 hover:bg-slate-900/60 transition-all shadow-md"
+                  className="p-4 bg-[#08090d] border border-slate-800 rounded-2xl space-y-3 group hover:border-indigo-500/50 hover:bg-slate-900/60 transition-all shadow-md flex flex-col justify-between"
                 >
                   <div
-                    className="w-full h-16 rounded-xl border border-white/10 shadow-inner transition-transform group-hover:scale-[1.02]"
+                    onClick={() => {
+                      setColor(p.value);
+                      showToast(`Warna ${p.name} (${p.value}) dipilih!`, "info");
+                    }}
+                    className="w-full h-16 rounded-xl border border-white/10 shadow-inner cursor-pointer transition-transform group-hover:scale-[1.02] flex items-end justify-end p-2"
                     style={{ backgroundColor: p.value }}
-                  />
-                  <div className="flex items-center justify-between">
+                  >
+                    <span className="bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-white font-mono opacity-0 group-hover:opacity-100 transition-opacity">
+                      Pilih Ini
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
                     <div>
                       <div className="text-xs font-bold text-white">{p.name}</div>
                       <div className="text-[10px] text-slate-500">{p.desc}</div>
                     </div>
-                    <div className="flex items-center gap-1 text-xs font-mono font-bold text-slate-300">
-                      <span>{p.value}</span>
-                      {copiedKey === `harmony-${idx}` ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5 text-slate-500 group-hover:text-white" />
-                      )}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          setColor(p.value);
+                          showToast(`Warna aktif diubah ke ${p.value}`, "info");
+                        }}
+                        className="px-2 py-1 rounded bg-slate-900 hover:bg-indigo-600/40 text-[10px] font-mono text-slate-300 hover:text-white border border-slate-800 transition-colors"
+                        title="Terapkan sebagai warna aktif studio"
+                      >
+                        Pilih
+                      </button>
+                      <button
+                        onClick={() => copyVal(p.value, `harmony-${idx}`)}
+                        className="p-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-colors"
+                        title="Salin HEX"
+                      >
+                        {copiedKey === `harmony-${idx}` ? (
+                          <Check className="w-3 h-3 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -537,7 +584,7 @@ export default function ColorStudio() {
               className="w-full h-44 rounded-2xl border border-slate-700/80 shadow-2xl flex items-center justify-center p-4 transition-all"
               style={{ background: gradientCss }}
             >
-              <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20 text-white text-xs font-mono text-center font-bold">
+              <div className="bg-black/70 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20 text-white text-xs font-mono text-center font-bold shadow-lg">
                 {gradientCss}
               </div>
             </div>
@@ -589,11 +636,11 @@ export default function ColorStudio() {
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
-                    value={gradColor2}
-                    onChange={(e) => setGradColor2(e.target.value.toUpperCase())}
+                    value={normalizeHex(gradColor2)}
+                    onChange={(e) => setGradColor2(normalizeHex(e.target.value))}
                     className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                   />
-                  <span className="text-xs font-mono text-slate-300 font-bold">{gradColor2}</span>
+                  <span className="text-xs font-mono text-slate-300 font-bold">{normalizeHex(gradColor2)}</span>
                 </div>
               </div>
             </div>
