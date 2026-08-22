@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
   Wrench, 
@@ -41,7 +40,7 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Early Access / Beta Notice Bar */}
+      {/* Early Access / Announcement Notice Bar */}
       {showBetaBar && (
         <div className="bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-indigo-950/80 border-b border-indigo-500/30 px-4 py-1.5 text-[11px] text-indigo-200 flex items-center justify-between gap-3 font-mono">
           <div className="max-w-7xl mx-auto flex items-center gap-2 text-center sm:text-left justify-center flex-1">
@@ -64,9 +63,9 @@ export default function Navbar() {
 
       {/* Main Top Header */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-[#08090d]/80 backdrop-blur-xl transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Brand Logo with Dynamic Ephemeral routing */}
-          <DynamicLink href="/" className="flex items-center gap-2.5 group">
+          <DynamicLink href="/" className="flex items-center gap-2.5 group shrink-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-500 p-[1px] shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-all duration-300">
               <div className="w-full h-full bg-[#090b10] rounded-[7px] flex items-center justify-center">
                 <Layers className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform duration-300" />
@@ -114,35 +113,34 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Quick Actions */}
-          <div className="flex items-center gap-2">
-            {/* Search Spotlight Trigger */}
+          {/* Spacious Search Spotlight Trigger (Mobile & Desktop) */}
+          <div className="flex items-center">
             <button
               onClick={() => setIsCommandOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs transition-all active:scale-95"
-              title="Search (Ctrl+K / Cmd+K)"
+              className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs transition-all active:scale-95 w-auto sm:w-56 md:w-64 shadow-sm group"
+              title="Cari Tool, Prompt, atau Projek (Ctrl+K / Cmd+K)"
             >
-              <Search className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="hidden sm:inline">Search</span>
-              <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700">
+              <div className="flex items-center gap-2">
+                <Search className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
+                <span className="hidden sm:inline text-slate-400 group-hover:text-slate-200">
+                  Cari cepat...
+                </span>
+                <span className="sm:hidden font-medium text-slate-300">Cari</span>
+              </div>
+              <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono bg-slate-800/90 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700">
                 ⌘K
               </kbd>
             </button>
-
-            <DynamicLink
-              href="/tools"
-              className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 transition-all active:scale-95 cursor-pointer"
-            >
-              <Wrench className="w-3.5 h-3.5" />
-              <span>Semua Tools</span>
-            </DynamicLink>
           </div>
         </div>
       </header>
 
-      {/* Mobile Floating Bottom Navigation Bar (Ergonomic Thumb Reach with Dynamic Tokens) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#08090d]/90 backdrop-blur-xl border-t border-slate-800/90 px-3 py-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl">
-        <div className="flex items-center justify-around">
+      {/* Mobile Bottom Navigation Bar (Always Visible & Fully Formatted) */}
+      <nav 
+        aria-label="Mobile Navigation"
+        className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-[#090b11]/95 backdrop-blur-2xl border-t border-slate-800/90 px-2 py-2 pb-[max(0.6rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(0,0,0,0.85)]"
+      >
+        <div className="grid grid-cols-4 items-center justify-items-center">
           {navLinks.map((link) => {
             const Icon = link.icon;
             const isActive =
@@ -155,43 +153,30 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-all duration-200 min-w-[56px] cursor-pointer",
+                  "flex flex-col items-center justify-center gap-1 py-1.5 px-2 rounded-xl transition-all duration-200 w-full max-w-[76px] cursor-pointer",
                   isActive
                     ? "text-indigo-400 font-semibold"
-                    : "text-slate-400 hover:text-slate-200"
+                    : "text-slate-400 hover:text-slate-200 active:scale-95"
                 )}
               >
                 <div
                   className={cn(
-                    "p-1.5 rounded-xl transition-all",
+                    "p-1.5 rounded-xl transition-all flex items-center justify-center",
                     isActive
                       ? "bg-indigo-600/20 border border-indigo-500/40 shadow-sm"
-                      : "bg-transparent"
+                      : "bg-slate-900/40 border border-slate-800/50"
                   )}
                 >
                   <Icon className="w-4 h-4" />
                 </div>
-                <span className="text-[10px] font-medium tracking-tight">
+                <span className="text-[10px] tracking-tight truncate max-w-[70px]">
                   {link.label}
                 </span>
               </DynamicLink>
             );
           })}
-
-          {/* Quick Search Action */}
-          <button
-            onClick={() => setIsCommandOpen(true)}
-            className="flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-indigo-400 transition-all min-w-[56px]"
-          >
-            <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800">
-              <Search className="w-4 h-4 text-indigo-400" />
-            </div>
-            <span className="text-[10px] font-medium tracking-tight">
-              Cari
-            </span>
-          </button>
         </div>
-      </div>
+      </nav>
 
       {/* Spotlight Command Modal */}
       <CommandPalette
