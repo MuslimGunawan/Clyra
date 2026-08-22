@@ -18,13 +18,13 @@ import {
   Split, 
   Layers, 
   Archive, 
-  RefreshCw, 
-  ImageIcon,
-  ShieldCheck,
-  Lock,
-  Unlock,
+  ImageIcon, 
+  ShieldCheck, 
+  Lock, 
+  Unlock, 
   Maximize2,
-  CheckCircle2
+  AlertTriangle,
+  ArrowRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ToastProvider";
@@ -83,8 +83,8 @@ export default function ImageCompressor() {
   const [settings, setSettings] = useState<SettingsState>({
     mode: "quality",
     quality: 80,
-    targetKb: 200,
-    outputFormat: "image/webp",
+    targetKb: 100,
+    outputFormat: "image/webp", // WebP is the superior default
     resizeMode: "original",
     maxWidth: 1920,
     percentage: 100,
@@ -128,7 +128,7 @@ export default function ImageCompressor() {
     });
   };
 
-  // Ultra-Fast Canvas Processing Engine
+  // Ultra-Fast Canvas Processing Engine with Multi-Pass Target KB Optimizer
   const processImageCanvas = useCallback(
     async (
       imgSrc: string,
@@ -203,26 +203,64 @@ export default function ImageCompressor() {
               resolve(null);
             }
           } else {
-            // Adaptive Binary Search for Target KB
+            // Target KB Multi-Pass Engine (Adaptive Binary Search + Auto Downscale if needed)
             const targetBytes = st.targetKb * 1024;
-            let low = 0.05;
-            let high = 0.98;
             let bestBlob: Blob | null = null;
             let bestQ = 0.8;
+            let finalW = canvasW;
+            let finalH = canvasH;
 
-            for (let i = 0; i < 7; i++) {
-              const mid = (low + high) / 2;
-              const b = await canvasToBlobPromise(canvas, st.outputFormat, mid);
-              if (!b) break;
-              if (b.size <= targetBytes) {
-                bestBlob = b;
-                bestQ = mid;
-                low = mid;
-              } else {
-                high = mid;
+            // Step A: Binary search quality (for WebP and JPEG)
+            if (st.outputFormat !== "image/png") {
+              let low = 0.05;
+              let high = 0.98;
+
+              for (let i = 0; i < 8; i++) {
+                const mid = (low + high) / 2;
+                const b = await canvasToBlobPromise(canvas, st.outputFormat, mid);
+                if (!b) break;
+                if (b.size <= targetBytes) {
+                  bestBlob = b;
+                  bestQ = mid;
+                  low = mid; // Try higher quality while staying under target
+                } else {
+                  high = mid; // Too large, reduce quality
+                }
               }
             }
 
+            // Step B: If still larger than target (or PNG which is lossless and ignores quality parameter)
+            // Progressively downscale dimensions to guarantee fitting under target KB!
+            if (!bestBlob || bestBlob.size > targetBytes) {
+              const scaleFactors = [0.9, 0.75, 0.6, 0.45, 0.35, 0.25, 0.15];
+              for (const factor of scaleFactors) {
+                const scaledW = Math.max(16, Math.round(canvasW * factor));
+                const scaledH = Math.max(16, Math.round(canvasH * factor));
+                const scCanvas = document.createElement("canvas");
+                scCanvas.width = scaledW;
+                scCanvas.height = scaledH;
+                const scCtx = scCanvas.getContext("2d");
+                if (!scCtx) continue;
+
+                if (st.outputFormat === "image/jpeg") {
+                  scCtx.fillStyle = "#ffffff";
+                  scCtx.fillRect(0, 0, scaledW, scaledH);
+                }
+                scCtx.drawImage(canvas, 0, 0, scaledW, scaledH);
+
+                const qToTest = st.outputFormat === "image/png" ? 1 : 0.7;
+                const b = await canvasToBlobPromise(scCanvas, st.outputFormat, qToTest);
+                if (b && b.size <= targetBytes) {
+                  bestBlob = b;
+                  finalW = scaledW;
+                  finalH = scaledH;
+                  bestQ = qToTest;
+                  break;
+                }
+              }
+            }
+
+            // Fallback lowest possible if still over target
             if (!bestBlob) {
               bestBlob = await canvasToBlobPromise(canvas, st.outputFormat, 0.05);
               bestQ = 0.05;
@@ -233,8 +271,8 @@ export default function ImageCompressor() {
               resolve({
                 blob: bestBlob,
                 url,
-                width: canvasW,
-                height: canvasH,
+                width: finalW,
+                height: finalH,
                 qualityAchieved: Math.round(bestQ * 100),
               });
             } else {
@@ -329,7 +367,13 @@ export default function ImageCompressor() {
 
   // Helper to update a setting and trigger instant real-time compression
   const updateSetting = <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
-    const updated = { ...settings, [key]: value };
+    let updated = { ...settings, [key]: value };
+
+    // Smart UX: If user selects Target Size mode and current format is PNG, automatically suggest WebP
+    if (key === "mode" && value === "targetSize" && settings.outputFormat === "image/png") {
+      updated.outputFormat = "image/webp";
+    }
+
     setSettings(updated);
     applySettingsRealtime(updated);
   };
@@ -478,7 +522,7 @@ export default function ImageCompressor() {
     if (preset === "web") {
       nextSt = { ...settings, mode: "quality", quality: 80, outputFormat: "image/webp", resizeMode: "preset", maxWidth: 1920 };
     } else if (preset === "doc") {
-      nextSt = { ...settings, mode: "targetSize", targetKb: 100, outputFormat: "image/jpeg", resizeMode: "original" };
+      nextSt = { ...settings, mode: "targetSize", targetKb: 100, outputFormat: "image/webp", resizeMode: "original" };
     } else if (preset === "hd") {
       nextSt = { ...settings, mode: "quality", quality: 92, outputFormat: "image/png", resizeMode: "original" };
     } else {
@@ -501,8 +545,9 @@ export default function ImageCompressor() {
   // Aggregate Stats
   const totalOrig = images.reduce((acc, i) => acc + i.originalSize, 0);
   const totalComp = images.reduce((acc, i) => acc + (i.compressedSize || i.originalSize), 0);
+  const isEnlarged = totalComp > totalOrig && totalOrig > 0;
   const savedBytes = Math.max(0, totalOrig - totalComp);
-  const savedPercent = totalOrig > 0 ? Math.round((savedBytes / totalOrig) * 100) : 0;
+  const savedPercent = totalOrig > 0 && !isEnlarged ? Math.round((savedBytes / totalOrig) * 100) : 0;
 
   return (
     <div className="space-y-8">
@@ -572,10 +617,18 @@ export default function ImageCompressor() {
               <div className="flex items-center gap-2 text-xs font-mono">
                 <span className="text-slate-500">Asli: {formatBytes(totalOrig)}</span>
                 <span className="text-slate-600">→</span>
-                <span className="text-emerald-400 font-bold">Hasil: {formatBytes(totalComp)}</span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-                  -{savedPercent}% (Hemat {formatBytes(savedBytes)})
+                <span className={cn("font-bold", isEnlarged ? "text-amber-400" : "text-emerald-400")}>
+                  Hasil: {formatBytes(totalComp)}
                 </span>
+                {!isEnlarged ? (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                    -{savedPercent}% (Hemat {formatBytes(savedBytes)})
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
+                    +Format PNG Raw
+                  </span>
+                )}
               </div>
             </div>
 
@@ -665,6 +718,30 @@ export default function ImageCompressor() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* PNG WARNING ALERT BANNER (If file enlarged due to lossless PNG) */}
+          {activeImage && activeImage.compressedSize > activeImage.originalSize && settings.outputFormat === "image/png" && (
+            <div className="p-4 rounded-2xl bg-amber-950/30 border border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-fadeIn">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-amber-200 block mb-0.5">
+                    Kenapa ukuran gambar bertambah menjadi {formatBytes(activeImage.compressedSize)}?
+                  </span>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    Format <strong>PNG adalah format grafis lossless</strong> tanpa kompresi byte lossy. Jika mengonversi foto JPG ke PNG, ukuran akan membesar. Untuk mengompres ukuran file secara drastis, disarankan menggunakan format <strong>WebP</strong>.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => updateSetting("outputFormat", "image/webp")}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold border border-amber-500/40 shrink-0 self-start sm:self-auto cursor-pointer"
+              >
+                <span>Beralih ke WebP (Paling Hemat)</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
 
@@ -802,16 +879,16 @@ export default function ImageCompressor() {
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
-                          min="10"
+                          min="5"
                           max="10000"
                           value={settings.targetKb}
-                          onChange={(e) => updateSetting("targetKb", Math.max(5, Number(e.target.value)))}
+                          onChange={(e) => updateSetting("targetKb", Math.max(1, Number(e.target.value)))}
                           className="w-full bg-[#08090d] border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:border-indigo-500 outline-none"
                         />
                         <span className="text-xs text-slate-400 font-mono">KB</span>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {[50, 100, 200, 500, 1024].map((kb) => (
+                        {[10, 20, 50, 100, 200, 500, 1024].map((kb) => (
                           <button
                             key={kb}
                             onClick={() => updateSetting("targetKb", kb)}
@@ -826,6 +903,9 @@ export default function ImageCompressor() {
                           </button>
                         ))}
                       </div>
+                      <p className="text-[11px] text-slate-500">
+                        Algoritma otomatis menyesuaikan kualitas dan resolusi agar pas di bawah batas target KB Anda.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -840,9 +920,9 @@ export default function ImageCompressor() {
                   <div className="grid grid-cols-3 gap-2">
                     {(
                       [
-                        { id: "image/webp", name: "WebP", desc: "Paling Ringan & Modern" },
+                        { id: "image/webp", name: "WebP", desc: "Paling Ringan (Disarankan)" },
                         { id: "image/jpeg", name: "JPG / JPEG", desc: "Standar Foto Universal" },
-                        { id: "image/png", name: "PNG", desc: "Tajam & Transparan" },
+                        { id: "image/png", name: "PNG", desc: "Lossless (Ukuran Lebih Besar)" },
                       ] as const
                     ).map((fmt) => (
                       <button
@@ -1139,16 +1219,25 @@ export default function ImageCompressor() {
                         className="max-w-full max-h-full object-contain"
                       />
                     )}
-                    <div className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-emerald-950/90 backdrop-blur-md text-xs font-mono text-emerald-300 border border-emerald-700/80 shadow-lg font-bold">
+                    <div className={cn(
+                      "absolute top-4 right-4 px-3 py-1.5 rounded-xl backdrop-blur-md text-xs font-mono shadow-lg font-bold border",
+                      activeImage.compressedSize > activeImage.originalSize
+                        ? "bg-amber-950/90 text-amber-300 border-amber-700/80"
+                        : "bg-emerald-950/90 text-emerald-300 border-emerald-700/80"
+                    )}>
                       <span className="mr-1.5">HASIL:</span>
                       <span>{formatBytes(activeImage.compressedSize)}</span>
-                      <span className="ml-1.5 text-emerald-400">
-                        (-
-                        {activeImage.originalSize > 0
-                          ? Math.round(((activeImage.originalSize - activeImage.compressedSize) / activeImage.originalSize) * 100)
-                          : 0}
-                        %)
-                      </span>
+                      {activeImage.compressedSize <= activeImage.originalSize ? (
+                        <span className="ml-1.5 text-emerald-400">
+                          (-
+                          {activeImage.originalSize > 0
+                            ? Math.round(((activeImage.originalSize - activeImage.compressedSize) / activeImage.originalSize) * 100)
+                            : 0}
+                          %)
+                        </span>
+                      ) : (
+                        <span className="ml-1.5 text-amber-400">(Lossless PNG)</span>
+                      )}
                     </div>
                   </div>
 
@@ -1189,7 +1278,14 @@ export default function ImageCompressor() {
                   <div className="bg-[#0c0e17] border border-slate-800 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between text-xs font-mono">
                       <span className="text-emerald-400 font-bold">HASIL TERKOMPRESI</span>
-                      <span className="text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800 font-bold">{formatBytes(activeImage.compressedSize)}</span>
+                      <span className={cn(
+                        "px-2 py-0.5 rounded border font-bold",
+                        activeImage.compressedSize > activeImage.originalSize
+                          ? "bg-amber-950/60 text-amber-300 border-amber-800"
+                          : "bg-emerald-950/60 text-emerald-300 border-emerald-800"
+                      )}>
+                        {formatBytes(activeImage.compressedSize)}
+                      </span>
                     </div>
                     <div className="relative w-full h-72 bg-[#07090e] rounded-xl overflow-hidden flex items-center justify-center border border-slate-800 p-2">
                       {activeImage.compressedUrl && (
