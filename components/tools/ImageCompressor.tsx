@@ -782,7 +782,7 @@ export default function ImageCompressor() {
             </div>
 
             {/* Sub-Tabs: 1. Kompresi | 2. Resolusi | 3. Filter Visual */}
-            <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
               <button
                 onClick={() => setActiveTab("compression")}
                 className={cn(

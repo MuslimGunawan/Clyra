@@ -383,13 +383,13 @@ export default function ColorStudio() {
       {/* 3. STUDIO TABS (Harmonies, Shades, Gradient, Image Extractor, WCAG) */}
       <div className="space-y-6">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-1.5 bg-[#0e111a] p-1.5 rounded-2xl border border-slate-800 text-xs overflow-x-auto scrollbar-none">
+        <div className="flex flex-wrap items-center gap-2 bg-[#0e111a] p-2 rounded-2xl border border-slate-800 text-xs">
           {[
-            { id: "harmonies", label: "1. Harmoni Warna (Harmonies)", icon: Sparkles },
+            { id: "harmonies", label: "1. Harmoni Warna", icon: Sparkles },
             { id: "shades", label: "2. Tailwind Shades (50-950)", icon: Layers },
             { id: "gradient", label: "3. CSS Gradient Studio", icon: Sliders },
-            { id: "image_extract", label: "4. Ekstrak Warna dari Foto", icon: Pipette },
-            { id: "wcag", label: "5. Aksesibilitas Kontras (WCAG)", icon: ShieldCheck },
+            { id: "image_extract", label: "4. Ekstrak dari Foto", icon: Pipette },
+            { id: "wcag", label: "5. Uji Kontras WCAG", icon: ShieldCheck },
           ].map((tab) => {
             const Icon = tab.icon;
             const isSelected = activeTab === tab.id;
@@ -398,10 +398,10 @@ export default function ColorStudio() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as StudioTab)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition-all shrink-0 cursor-pointer",
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl font-semibold transition-all cursor-pointer",
                   isSelected
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold"
-                    : "text-slate-400 hover:text-white"
+                    : "text-slate-400 hover:text-white bg-slate-900/60 border border-slate-800/80"
                 )}
               >
                 <Icon className="w-3.5 h-3.5" />

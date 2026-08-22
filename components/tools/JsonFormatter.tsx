@@ -788,8 +788,8 @@ export default function JsonFormatter() {
         <div className="bg-[#0e111a] border border-slate-800/90 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col justify-between space-y-4">
           <div className="space-y-3">
             {/* Target Language Selector Tabs */}
-            <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none max-w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+              <div className="flex flex-wrap items-center gap-1.5 max-w-full">
                 {(
                   [
                     { id: "typescript", label: "TypeScript", icon: Code2 },
