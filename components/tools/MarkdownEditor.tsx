@@ -298,9 +298,112 @@ console.log("Clyra Workspace siap digunakan!");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Print Document
+  // Print / Save as PDF (Document only, without website UI)
   const handlePrint = () => {
-    window.print();
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      showToast("Izinkan pop-up peramban untuk mencetak dokumen!", "error");
+      return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Clyra Markdown Document</title>
+  <style>
+    @page {
+      margin: 15mm 20mm;
+      size: A4 portrait;
+    }
+    @media print {
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      line-height: 1.6;
+      padding: 0;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1, h2, h3, h4 { color: #020617; font-weight: 700; margin-top: 1.5em; margin-bottom: 0.5em; }
+    h1 { font-size: 24pt; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+    h2 { font-size: 18pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+    h3 { font-size: 14pt; }
+    p { margin: 1em 0; }
+    pre {
+      background: #f8fafc !important;
+      border: 1px solid #cbd5e1 !important;
+      border-radius: 8px;
+      padding: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 9.5pt;
+      overflow-x: auto;
+      color: #0f172a !important;
+      page-break-inside: avoid;
+    }
+    code {
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 9.5pt;
+      font-family: monospace;
+      color: #4338ca;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+      font-size: 9.5pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    th {
+      background: #f1f5f9 !important;
+      font-weight: bold;
+      color: #0f172a;
+    }
+    blockquote {
+      border-left: 4px solid #6366f1;
+      background: #f8fafc !important;
+      padding: 10px 16px;
+      margin: 16px 0;
+      color: #334155;
+      font-style: italic;
+      border-radius: 0 8px 8px 0;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 24px 0;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  ${renderedHtml}
+  <script>
+    window.onload = function() {
+      window.print();
+      setTimeout(function() { window.close(); }, 500);
+    };
+  </script>
+</body>
+</html>`);
+    printWindow.document.close();
   };
 
   // Template Loader
