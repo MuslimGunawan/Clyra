@@ -42,8 +42,8 @@ export default function JsonFormatter() {
         product: "Clyra Workspace",
         version: "2.0.0",
         author: {
-          name: "Muslim Gunawan",
-          role: "Lead Architect",
+          name: "Clyra Core",
+          role: "Creative Workspace",
           verified: true
         },
         features: [

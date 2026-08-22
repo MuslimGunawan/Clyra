@@ -52,8 +52,8 @@ export const metadata: Metadata = {
     "client-side safe",
     "web tools",
   ],
-  authors: [{ name: "Muslim Gunawan", url: "https://github.com/MuslimGunawan" }],
-  creator: "Muslim Gunawan",
+  authors: [{ name: "Clyra" }],
+  creator: "Clyra Platform",
   publisher: "Clyra",
   robots: {
     index: true,
@@ -113,8 +113,8 @@ export default function RootLayout({
         name: "Clyra",
         description: "Personal Creative & Productivity Workspace",
         publisher: {
-          "@type": "Person",
-          name: "Muslim Gunawan",
+          "@type": "Organization",
+          name: "Clyra",
         },
       },
       {
