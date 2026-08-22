@@ -2,23 +2,18 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { 
-  FolderGit2, 
   Search, 
-  Plus, 
-  Download 
+  FolderGit2 
 } from "lucide-react";
 import { PROJECTS, PROJECT_CATEGORIES } from "@/data/projects";
 import { ProjectItem } from "@/lib/types";
 import ProjectCard from "@/components/ProjectCard";
-import AddProjectModal from "@/components/AddProjectModal";
-
-import { getStoredProjects, saveStoredProject } from "@/lib/adminStore";
+import { getStoredProjects } from "@/lib/adminStore";
 
 export default function WebProjectsPage() {
   const [projectsList, setProjectsList] = useState<ProjectItem[]>(PROJECTS);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("Semua Projek");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const loadData = () => {
     setProjectsList(getStoredProjects());
@@ -30,19 +25,6 @@ export default function WebProjectsPage() {
     window.addEventListener("clyra_projects_updated", handleUpdate);
     return () => window.removeEventListener("clyra_projects_updated", handleUpdate);
   }, []);
-
-  const handleAddProject = (newProj: ProjectItem) => {
-    const updated = saveStoredProject(newProj);
-    setProjectsList(updated);
-  };
-
-  const exportProjectsJSON = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectsList, null, 2));
-    const a = document.createElement("a");
-    a.href = dataStr;
-    a.download = `clyra-projects-backup-${Date.now()}.json`;
-    a.click();
-  };
 
   const filteredProjects = useMemo(() => {
     return projectsList.filter((item) => {
@@ -81,25 +63,6 @@ export default function WebProjectsPage() {
               Dokumentasi dan etalase karya website, aplikasi, dan eksperimen web yang pernah dibuat, lengkap dengan live demo link dan informasi tech stack.
             </p>
           </div>
-
-          <div className="flex items-center gap-3 self-start md:self-auto">
-            <button
-              onClick={exportProjectsJSON}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-semibold transition-all"
-              title="Backup seluruh data projek ke JSON"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Backup JSON</span>
-            </button>
-
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/40 transition-all active:scale-95"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Projek</span>
-            </button>
-          </div>
         </div>
 
         {/* Filter and Search Bar */}
@@ -111,20 +74,21 @@ export default function WebProjectsPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari projek atau tech stack..."
-                className="w-full bg-[#08090d] border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                placeholder="Cari projek atau teknologi..."
+                className="w-full bg-slate-900/90 border border-slate-800 focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none transition-colors"
               />
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto w-full pb-1 sm:pb-0 scrollbar-none">
+            {/* Category Pills */}
+            <div className="flex flex-wrap gap-1.5 w-full">
               {PROJECT_CATEGORIES.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
                     selectedCategory === cat
-                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                      : "bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800"
+                      ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 shadow-sm"
+                      : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/60"
                   }`}
                 >
                   {cat}
@@ -142,28 +106,15 @@ export default function WebProjectsPage() {
             ))}
           </div>
         ) : (
-          <div className="p-12 text-center bg-[#0e111a] border border-slate-800/80 rounded-2xl">
-            <p className="text-slate-400 text-sm">
-              Tidak ada projek yang cocok dengan kriteria pencarian.
+          <div className="text-center py-20 bg-slate-900/20 border border-slate-800/60 rounded-3xl p-8">
+            <FolderGit2 className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+            <h3 className="text-base font-semibold text-slate-300">Tidak ada projek yang cocok</h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+              Coba gunakan kata kunci pencarian lain atau pilih kategori Semua.
             </p>
-            <button
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedCategory("Semua Projek");
-              }}
-              className="mt-3 text-xs text-indigo-400 hover:underline"
-            >
-              Reset filter
-            </button>
           </div>
         )}
       </main>
-
-      <AddProjectModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAddProject={handleAddProject}
-      />
     </div>
   );
 }

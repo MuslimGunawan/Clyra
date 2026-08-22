@@ -62,7 +62,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
               rel="noopener noreferrer"
               className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-colors"
             >
-              <span>Live Demo</span>
+              <span>Kunjungi Website</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           )}

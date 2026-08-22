@@ -31,7 +31,7 @@ export const TRANSLATIONS = {
     "nav.search_placeholder": "Cari cepat (Ctrl+K)...",
 
     // Notice Banner
-    "banner.early_access": "EARLY ACCESS",
+    "banner.early_access": "CLYRA HUB",
     "banner.subtitle": "Clyra Workspace — utilitas cepat, modern & serbaguna.",
 
     // Hero Section
@@ -47,7 +47,7 @@ export const TRANSLATIONS = {
     "hero.btn_prompts": "Galeri Prompt AI",
     "hero.feat_unlimited": "100% Fitur Pro Unlocked",
     "hero.feat_privacy": "Zero Server Tracking",
-    "hero.feat_ready": "Unlimited & Vercel Ready",
+    "hero.feat_ready": "Performa Cepat & Stabil",
 
     // Section Titles
     "sec.diff_badge": "KENAPA CLYRA BERBEDA?",
@@ -84,7 +84,7 @@ export const TRANSLATIONS = {
     "nav.search_placeholder": "Quick search (Ctrl+K)...",
 
     // Notice Banner
-    "banner.early_access": "EARLY ACCESS",
+    "banner.early_access": "CLYRA HUB",
     "banner.subtitle": "Clyra Workspace — fast, modern & versatile productivity hub.",
 
     // Hero Section
@@ -100,7 +100,7 @@ export const TRANSLATIONS = {
     "hero.btn_prompts": "AI Prompt Gallery",
     "hero.feat_unlimited": "100% Pro Unlocked",
     "hero.feat_privacy": "Zero Server Tracking",
-    "hero.feat_ready": "Unlimited & Production Ready",
+    "hero.feat_ready": "Fast & Highly Responsive",
 
     // Section Titles
     "sec.diff_badge": "WHY CHOOSE CLYRA?",
@@ -137,7 +137,7 @@ export const TRANSLATIONS = {
     "nav.search_placeholder": "快捷搜索 (Ctrl+K)...",
 
     // Notice Banner
-    "banner.early_access": "抢先体验",
+    "banner.early_access": "CLYRA 平台",
     "banner.subtitle": "Clyra 工作空间 — 快速、现代、全能的生产力中心。",
 
     // Hero Section
@@ -153,7 +153,7 @@ export const TRANSLATIONS = {
     "hero.btn_prompts": "AI 提示词库",
     "hero.feat_unlimited": "100% 解锁专业版",
     "hero.feat_privacy": "零服务器追踪",
-    "hero.feat_ready": "无限使用 & 部署就绪",
+    "hero.feat_ready": "极速且响应灵敏",
 
     // Section Titles
     "sec.diff_badge": "为什么选择 CLYRA？",
@@ -190,7 +190,7 @@ export const TRANSLATIONS = {
     "nav.search_placeholder": "بحث سريع (Ctrl+K)...",
 
     // Notice Banner
-    "banner.early_access": "وصول مبكر",
+    "banner.early_access": "منصة كليرا",
     "banner.subtitle": "مساحة عمل كليرا — أدوات إنتاجية سريعة وحديثة ومتكاملة.",
 
     // Hero Section
@@ -206,7 +206,7 @@ export const TRANSLATIONS = {
     "hero.btn_prompts": "معرض أوامر الذكاء الاصطناعي",
     "hero.feat_unlimited": "ميزات احترافية 100%",
     "hero.feat_privacy": "بدون تتبع على السيرفر",
-    "hero.feat_ready": "غير محدود وجاهز للنشر",
+    "hero.feat_ready": "أداء سريع وفائق الاستجابة",
 
     // Section Titles
     "sec.diff_badge": "لماذا تختار كليرا؟",
