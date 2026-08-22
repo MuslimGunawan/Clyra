@@ -1,7 +1,7 @@
 "use client";
 
 import DynamicLink from "@/components/DynamicLink";
-import { Scale, Terminal } from "lucide-react";
+import { Scale, Terminal, History } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function Footer() {
@@ -31,6 +31,13 @@ export default function Footer() {
           <DynamicLink href="/projects/web" className="hover:text-indigo-400 transition-colors">
             {t("nav.web")}
           </DynamicLink>
+          <button
+            onClick={() => window.dispatchEvent(new Event("clyra_open_changelog"))}
+            className="text-slate-400 hover:text-indigo-300 transition-colors flex items-center gap-1 cursor-pointer"
+          >
+            <History className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Changelog (v2.0.0)</span>
+          </button>
           <DynamicLink href="/terms" className="text-slate-500 hover:text-indigo-300 transition-colors flex items-center gap-1">
             <Scale className="w-3.5 h-3.5" />
             <span>{t("footer.terms")}</span>

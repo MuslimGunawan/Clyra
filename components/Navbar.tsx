@@ -9,7 +9,8 @@ import {
   Compass, 
   Layers, 
   Search, 
-  X 
+  X,
+  History
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CommandPalette from "./CommandPalette";
@@ -67,18 +68,25 @@ export default function Navbar() {
       <div className="sticky top-0 z-40 w-full bg-[#08090d]/95 backdrop-blur-xl border-b border-slate-800/80 shadow-md">
         {/* Early Access / Announcement Notice Bar */}
         {showBetaBar && (
-          <div className="bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-indigo-950/80 border-b border-indigo-500/30 px-4 py-1.5 text-[11px] text-indigo-200 flex items-center justify-between gap-3 font-mono">
-            <div className="max-w-7xl mx-auto flex items-center gap-2 text-center sm:text-left justify-center flex-1">
-              <span className="px-1.5 py-0.2 rounded bg-indigo-500/30 text-indigo-200 font-bold border border-indigo-500/40 text-[10px]">
-                {t("banner.early_access")}
+          <div className="bg-gradient-to-r from-indigo-950/90 via-purple-950/70 to-indigo-950/90 border-b border-indigo-500/30 px-4 py-1.5 text-[11px] text-indigo-200 flex items-center justify-between gap-3 font-mono">
+            <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-2 text-center sm:text-left justify-center flex-1">
+              <span className="px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 font-bold border border-indigo-500/40 text-[10px]">
+                Clyra Hub (Early Access)
               </span>
-              <span className="text-slate-300 truncate sm:overflow-visible">
-                {t("banner.subtitle")}
+              <span className="text-slate-300 hidden sm:inline">
+                Suite Utilitas Produktivitas &amp; Developer 100% Client-Side
               </span>
+              <button
+                onClick={() => window.dispatchEvent(new Event("clyra_open_changelog"))}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-600/40 hover:bg-indigo-600/70 text-indigo-200 border border-indigo-400/40 text-[10px] font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+              >
+                <History className="w-3 h-3 text-indigo-300" />
+                <span>Changelog v2.0.0</span>
+              </button>
             </div>
             <button
               onClick={() => setShowBetaBar(false)}
-              className="text-indigo-400 hover:text-white transition-colors p-1"
+              className="text-indigo-400 hover:text-white transition-colors p-1 cursor-pointer"
               title="Tutup"
             >
               <X className="w-3.5 h-3.5" />
