@@ -15,26 +15,42 @@ import {
   FlipVertical, 
   SunMedium, 
   Contrast, 
-  Eye, 
   Split, 
   Layers, 
   Archive, 
-  FileCheck2, 
-  Check, 
   RefreshCw, 
-  Image as ImageIcon,
+  ImageIcon,
   ShieldCheck,
-  Zap,
   Lock,
   Unlock,
-  ChevronDown
+  Maximize2,
+  CheckCircle2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ToastProvider";
 
 type CompressionMode = "quality" | "targetSize";
 type OutputFormat = "image/webp" | "image/jpeg" | "image/png";
-type PreviewMode = "split" | "sideBySide" | "single";
+type PreviewMode = "split" | "sideBySide";
+
+interface SettingsState {
+  mode: CompressionMode;
+  quality: number;
+  targetKb: number;
+  outputFormat: OutputFormat;
+  resizeMode: "original" | "preset" | "percentage" | "custom";
+  maxWidth: number;
+  percentage: number;
+  customWidth: number;
+  customHeight: number;
+  keepAspectRatio: boolean;
+  rotation: number;
+  flipH: boolean;
+  flipV: boolean;
+  isGrayscale: boolean;
+  brightness: number;
+  contrast: number;
+}
 
 interface ImageItem {
   id: string;
@@ -50,91 +66,58 @@ interface ImageItem {
   compressedWidth: number;
   compressedHeight: number;
   achievedQuality?: number;
-  status: "idle" | "processing" | "done" | "error";
+  isProcessing?: boolean;
 }
 
 export default function ImageCompressor() {
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const splitContainerRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Batch Image List
+  // Images state
   const [images, setImages] = useState<ImageItem[]>([]);
-  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
-  // Global Optimization Settings
-  const [mode, setMode] = useState<CompressionMode>("quality");
-  const [quality, setQuality] = useState<number>(80);
-  const [targetKb, setTargetKb] = useState<number>(200);
-  const [outputFormat, setOutputFormat] = useState<OutputFormat>("image/webp");
-  
-  // Resizing settings
-  const [resizeMode, setResizeMode] = useState<"original" | "preset" | "percentage" | "custom">("original");
-  const [maxWidth, setMaxWidth] = useState<number>(1920);
-  const [percentage, setPercentage] = useState<number>(100);
-  const [customWidth, setCustomWidth] = useState<number>(1280);
-  const [customHeight, setCustomHeight] = useState<number>(720);
-  const [keepAspectRatio, setKeepAspectRatio] = useState<boolean>(true);
+  // Master Settings State
+  const [settings, setSettings] = useState<SettingsState>({
+    mode: "quality",
+    quality: 80,
+    targetKb: 200,
+    outputFormat: "image/webp",
+    resizeMode: "original",
+    maxWidth: 1920,
+    percentage: 100,
+    customWidth: 1920,
+    customHeight: 1080,
+    keepAspectRatio: true,
+    rotation: 0,
+    flipH: false,
+    flipV: false,
+    isGrayscale: false,
+    brightness: 100,
+    contrast: 100,
+  });
 
-  // Filters & Adjustments
-  const [rotation, setRotation] = useState<number>(0); // 0, 90, 180, 270
-  const [flipH, setFlipH] = useState<boolean>(false);
-  const [flipV, setFlipV] = useState<boolean>(false);
-  const [isGrayscale, setIsGrayscale] = useState<boolean>(false);
-  const [brightness, setBrightness] = useState<number>(100); // 100 = normal
-  const [contrast, setContrast] = useState<number>(100); // 100 = normal
-
-  // View state
+  // UI Tabs & Views
+  const [activeTab, setActiveTab] = useState<"compression" | "resize" | "filters">("compression");
   const [previewMode, setPreviewMode] = useState<PreviewMode>("split");
-  const [splitPos, setSplitPos] = useState<number>(50); // percentage 0 - 100
+  const [splitPos, setSplitPos] = useState<number>(50);
   const [isDraggingSplit, setIsDraggingSplit] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
-  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
 
-  // Active selected image for preview
-  const currentImage = images.find((img) => img.id === selectedImageId) || images[0] || null;
+  const activeImage = images.find((img) => img.id === activeId) || images[0] || null;
 
-  // Listen to Global Paste (Ctrl+V) for screenshots
-  useEffect(() => {
-    const handlePaste = (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-
-      const files: File[] = [];
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.startsWith("image/")) {
-          const file = items[i].getAsFile();
-          if (file) files.push(file);
-        }
-      }
-      if (files.length > 0) {
-        addFiles(files);
-        showToast(`${files.length} gambar ditempel dari clipboard!`, "success");
-      }
-    };
-
-    window.addEventListener("paste", handlePaste);
-    return () => window.removeEventListener("paste", handlePaste);
-  }, [images]);
-
-  // Clean up object URLs on unmount
-  useEffect(() => {
-    return () => {
-      images.forEach((img) => {
-        if (img.originalUrl) URL.revokeObjectURL(img.originalUrl);
-        if (img.compressedUrl) URL.revokeObjectURL(img.compressedUrl);
-      });
-    };
-  }, []);
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return "0 B";
+  // Format File Size
+  const formatBytes = (bytes: number): string => {
+    if (!bytes || bytes === 0) return "0 B";
     const k = 1024;
     const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
+  // Convert Canvas to Blob
   const canvasToBlobPromise = (
     canvas: HTMLCanvasElement,
     format: string,
@@ -145,209 +128,214 @@ export default function ImageCompressor() {
     });
   };
 
-  // Process a single image through Canvas
-  const processImageFile = async (
-    item: ImageItem,
-    overrideSettings?: Partial<{
-      mode: CompressionMode;
-      quality: number;
-      targetKb: number;
-      outputFormat: OutputFormat;
-      rotation: number;
-      flipH: boolean;
-      flipV: boolean;
-      isGrayscale: boolean;
-      brightness: number;
-      contrast: number;
-      resizeMode: "original" | "preset" | "percentage" | "custom";
-      maxWidth: number;
-      percentage: number;
-      customWidth: number;
-      customHeight: number;
-    }>
-  ): Promise<{ blob: Blob; url: string; width: number; height: number; qualityAchieved?: number } | null> => {
-    const sMode = overrideSettings?.mode ?? mode;
-    const sQuality = overrideSettings?.quality ?? quality;
-    const sTargetKb = overrideSettings?.targetKb ?? targetKb;
-    const sFormat = overrideSettings?.outputFormat ?? outputFormat;
-    const sRotation = overrideSettings?.rotation ?? rotation;
-    const sFlipH = overrideSettings?.flipH ?? flipH;
-    const sFlipV = overrideSettings?.flipV ?? flipV;
-    const sGrayscale = overrideSettings?.isGrayscale ?? isGrayscale;
-    const sBrightness = overrideSettings?.brightness ?? brightness;
-    const sContrast = overrideSettings?.contrast ?? contrast;
-    const sResizeMode = overrideSettings?.resizeMode ?? resizeMode;
-    const sMaxWidth = overrideSettings?.maxWidth ?? maxWidth;
-    const sPercentage = overrideSettings?.percentage ?? percentage;
-    const sCustomWidth = overrideSettings?.customWidth ?? customWidth;
-    const sCustomHeight = overrideSettings?.customHeight ?? customHeight;
+  // Ultra-Fast Canvas Processing Engine
+  const processImageCanvas = useCallback(
+    async (
+      imgSrc: string,
+      origW: number,
+      origH: number,
+      st: SettingsState
+    ): Promise<{ blob: Blob; url: string; width: number; height: number; qualityAchieved?: number } | null> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = async () => {
+          let naturalW = img.naturalWidth || origW || img.width;
+          let naturalH = img.naturalHeight || origH || img.height;
 
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = async () => {
-        let origW = img.naturalWidth || img.width;
-        let origH = img.naturalHeight || img.height;
+          // 1. Calculate Target Dimensions
+          let targetW = naturalW;
+          let targetH = naturalH;
 
-        // Calculate Target Dimensions
-        let targetW = origW;
-        let targetH = origH;
-
-        if (sResizeMode === "preset" && sMaxWidth > 0 && origW > sMaxWidth) {
-          targetW = sMaxWidth;
-          targetH = Math.round((origH * sMaxWidth) / origW);
-        } else if (sResizeMode === "percentage" && sPercentage < 100 && sPercentage > 0) {
-          targetW = Math.max(1, Math.round((origW * sPercentage) / 100));
-          targetH = Math.max(1, Math.round((origH * sPercentage) / 100));
-        } else if (sResizeMode === "custom") {
-          targetW = Math.max(1, sCustomWidth);
-          targetH = Math.max(1, sCustomHeight);
-        }
-
-        // Handle Canvas Rotation Dimensions
-        const isRotated90 = sRotation === 90 || sRotation === 270;
-        const canvasW = isRotated90 ? targetH : targetW;
-        const canvasH = isRotated90 ? targetW : targetH;
-
-        const canvas = document.createElement("canvas");
-        canvas.width = canvasW;
-        canvas.height = canvasH;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          resolve(null);
-          return;
-        }
-
-        // Fill background for JPEG
-        if (sFormat === "image/jpeg") {
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, canvasW, canvasH);
-        }
-
-        // Apply visual CSS filters (Grayscale, Brightness, Contrast)
-        const filterParts: string[] = [];
-        if (sGrayscale) filterParts.push("grayscale(100%)");
-        if (sBrightness !== 100) filterParts.push(`brightness(${sBrightness}%)`);
-        if (sContrast !== 100) filterParts.push(`contrast(${sContrast}%)`);
-        if (filterParts.length > 0) {
-          ctx.filter = filterParts.join(" ");
-        }
-
-        // Apply Transformations (Rotate, Flip)
-        ctx.save();
-        ctx.translate(canvasW / 2, canvasH / 2);
-        if (sRotation !== 0) {
-          ctx.rotate((sRotation * Math.PI) / 180);
-        }
-        ctx.scale(sFlipH ? -1 : 1, sFlipV ? -1 : 1);
-        ctx.drawImage(img, -targetW / 2, -targetH / 2, targetW, targetH);
-        ctx.restore();
-
-        // Compress
-        if (sMode === "quality") {
-          const blob = await canvasToBlobPromise(canvas, sFormat, sQuality / 100);
-          if (blob) {
-            const url = URL.createObjectURL(blob);
-            resolve({ blob, url, width: canvasW, height: canvasH, qualityAchieved: sQuality });
-          } else {
-            resolve(null);
+          if (st.resizeMode === "preset" && st.maxWidth > 0 && naturalW > st.maxWidth) {
+            targetW = st.maxWidth;
+            targetH = Math.round((naturalH * st.maxWidth) / naturalW);
+          } else if (st.resizeMode === "percentage" && st.percentage < 100 && st.percentage > 0) {
+            targetW = Math.max(1, Math.round((naturalW * st.percentage) / 100));
+            targetH = Math.max(1, Math.round((naturalH * st.percentage) / 100));
+          } else if (st.resizeMode === "custom") {
+            targetW = Math.max(1, st.customWidth);
+            targetH = Math.max(1, st.customHeight);
           }
-        } else {
-          // Binary Search Target KB
-          const targetBytes = sTargetKb * 1024;
-          let low = 0.05;
-          let high = 0.98;
-          let bestBlob: Blob | null = null;
-          let bestQ = 0.8;
 
-          for (let i = 0; i < 7; i++) {
-            const mid = (low + high) / 2;
-            const b = await canvasToBlobPromise(canvas, sFormat, mid);
-            if (!b) break;
-            if (b.size <= targetBytes) {
-              bestBlob = b;
-              bestQ = mid;
-              low = mid;
+          // 2. Handle Rotation
+          const isRotated90 = st.rotation === 90 || st.rotation === 270;
+          const canvasW = isRotated90 ? targetH : targetW;
+          const canvasH = isRotated90 ? targetW : targetH;
+
+          const canvas = document.createElement("canvas");
+          canvas.width = canvasW;
+          canvas.height = canvasH;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(null);
+            return;
+          }
+
+          // 3. Fill JPEG Background with White
+          if (st.outputFormat === "image/jpeg") {
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvasW, canvasH);
+          }
+
+          // 4. Visual Filters
+          const filters: string[] = [];
+          if (st.isGrayscale) filters.push("grayscale(100%)");
+          if (st.brightness !== 100) filters.push(`brightness(${st.brightness}%)`);
+          if (st.contrast !== 100) filters.push(`contrast(${st.contrast}%)`);
+          if (filters.length > 0) ctx.filter = filters.join(" ");
+
+          // 5. Draw Transformations
+          ctx.save();
+          ctx.translate(canvasW / 2, canvasH / 2);
+          if (st.rotation !== 0) ctx.rotate((st.rotation * Math.PI) / 180);
+          ctx.scale(st.flipH ? -1 : 1, st.flipV ? -1 : 1);
+          ctx.drawImage(img, -targetW / 2, -targetH / 2, targetW, targetH);
+          ctx.restore();
+
+          // 6. Compression Execution
+          if (st.mode === "quality") {
+            const blob = await canvasToBlobPromise(canvas, st.outputFormat, st.quality / 100);
+            if (blob) {
+              const url = URL.createObjectURL(blob);
+              resolve({ blob, url, width: canvasW, height: canvasH, qualityAchieved: st.quality });
             } else {
-              high = mid;
+              resolve(null);
+            }
+          } else {
+            // Adaptive Binary Search for Target KB
+            const targetBytes = st.targetKb * 1024;
+            let low = 0.05;
+            let high = 0.98;
+            let bestBlob: Blob | null = null;
+            let bestQ = 0.8;
+
+            for (let i = 0; i < 7; i++) {
+              const mid = (low + high) / 2;
+              const b = await canvasToBlobPromise(canvas, st.outputFormat, mid);
+              if (!b) break;
+              if (b.size <= targetBytes) {
+                bestBlob = b;
+                bestQ = mid;
+                low = mid;
+              } else {
+                high = mid;
+              }
+            }
+
+            if (!bestBlob) {
+              bestBlob = await canvasToBlobPromise(canvas, st.outputFormat, 0.05);
+              bestQ = 0.05;
+            }
+
+            if (bestBlob) {
+              const url = URL.createObjectURL(bestBlob);
+              resolve({
+                blob: bestBlob,
+                url,
+                width: canvasW,
+                height: canvasH,
+                qualityAchieved: Math.round(bestQ * 100),
+              });
+            } else {
+              resolve(null);
             }
           }
-
-          if (!bestBlob) {
-            bestBlob = await canvasToBlobPromise(canvas, sFormat, 0.05);
-            bestQ = 0.05;
-          }
-
-          if (bestBlob) {
-            const url = URL.createObjectURL(bestBlob);
-            resolve({
-              blob: bestBlob,
-              url,
-              width: canvasW,
-              height: canvasH,
-              qualityAchieved: Math.round(bestQ * 100),
-            });
-          } else {
-            resolve(null);
-          }
-        }
-      };
-      img.src = item.originalUrl;
-    });
-  };
-
-  // Re-process all images when settings change
-  const triggerRecompressAll = useCallback(
-    async (itemsToProcess?: ImageItem[]) => {
-      const targetList = itemsToProcess || images;
-      if (targetList.length === 0) return;
-
-      setIsBatchProcessing(true);
-
-      const updated = await Promise.all(
-        targetList.map(async (item) => {
-          const result = await processImageFile(item);
-          if (result) {
-            if (item.compressedUrl) URL.revokeObjectURL(item.compressedUrl);
-            return {
-              ...item,
-              compressedBlob: result.blob,
-              compressedUrl: result.url,
-              compressedSize: result.blob.size,
-              compressedWidth: result.width,
-              compressedHeight: result.height,
-              achievedQuality: result.qualityAchieved,
-              status: "done" as const,
-            };
-          }
-          return item;
-        })
-      );
-
-      setImages(updated);
-      setIsBatchProcessing(false);
+        };
+        img.src = imgSrc;
+      });
     },
-    [
-      images,
-      mode,
-      quality,
-      targetKb,
-      outputFormat,
-      resizeMode,
-      maxWidth,
-      percentage,
-      customWidth,
-      customHeight,
-      rotation,
-      flipH,
-      flipV,
-      isGrayscale,
-      brightness,
-      contrast,
-    ]
+    []
   );
 
-  const addFiles = (files: File[]) => {
+  // Real-time Update Handler: Updates Active Image Instantly (<15ms)
+  const applySettingsRealtime = useCallback(
+    (newSettings: SettingsState, currentImagesList?: ImageItem[]) => {
+      const list = currentImagesList || images;
+      if (list.length === 0) return;
+
+      const currentActive = list.find((i) => i.id === activeId) || list[0];
+      if (!currentActive) return;
+
+      // 1. Process active image immediately for zero-lag feedback
+      processImageCanvas(
+        currentActive.originalUrl,
+        currentActive.originalWidth,
+        currentActive.originalHeight,
+        newSettings
+      ).then((res) => {
+        if (res) {
+          setImages((prev) =>
+            prev.map((item) => {
+              if (item.id === currentActive.id) {
+                if (item.compressedUrl) URL.revokeObjectURL(item.compressedUrl);
+                return {
+                  ...item,
+                  compressedBlob: res.blob,
+                  compressedUrl: res.url,
+                  compressedSize: res.blob.size,
+                  compressedWidth: res.width,
+                  compressedHeight: res.height,
+                  achievedQuality: res.qualityAchieved,
+                  isProcessing: false,
+                };
+              }
+              return item;
+            })
+          );
+        }
+      });
+
+      // 2. Debounce batch processing for remaining background images (300ms)
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        const otherImages = list.filter((i) => i.id !== currentActive.id);
+        if (otherImages.length > 0) {
+          Promise.all(
+            otherImages.map(async (item) => {
+              const res = await processImageCanvas(
+                item.originalUrl,
+                item.originalWidth,
+                item.originalHeight,
+                newSettings
+              );
+              if (res) {
+                if (item.compressedUrl) URL.revokeObjectURL(item.compressedUrl);
+                return {
+                  ...item,
+                  compressedBlob: res.blob,
+                  compressedUrl: res.url,
+                  compressedSize: res.blob.size,
+                  compressedWidth: res.width,
+                  compressedHeight: res.height,
+                  achievedQuality: res.qualityAchieved,
+                };
+              }
+              return item;
+            })
+          ).then((updatedOthers) => {
+            setImages((prev) =>
+              prev.map((item) => {
+                const found = updatedOthers.find((o) => o.id === item.id);
+                return found || item;
+              })
+            );
+          });
+        }
+      }, 300);
+    },
+    [activeId, images, processImageCanvas]
+  );
+
+  // Helper to update a setting and trigger instant real-time compression
+  const updateSetting = <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
+    const updated = { ...settings, [key]: value };
+    setSettings(updated);
+    applySettingsRealtime(updated);
+  };
+
+  // Add Files Handler
+  const handleAddFiles = (files: File[]) => {
     const valid = files.filter((f) => f.type.startsWith("image/"));
     if (valid.length === 0) return;
 
@@ -366,42 +354,53 @@ export default function ImageCompressor() {
         compressedSize: 0,
         compressedWidth: 0,
         compressedHeight: 0,
-        status: "processing",
+        isProcessing: true,
       };
     });
 
-    // Populate natural dimensions and immediately compress
+    // Extract natural dimensions
     newItems.forEach((item) => {
       const img = new Image();
       img.onload = () => {
         item.originalWidth = img.naturalWidth || img.width;
         item.originalHeight = img.naturalHeight || img.height;
-        if (customWidth === 1280 && item.originalWidth > 0) {
-          setCustomWidth(item.originalWidth);
-          setCustomHeight(item.originalHeight);
-        }
       };
       img.src = item.originalUrl;
     });
 
     const combined = [...images, ...newItems];
     setImages(combined);
-    if (!selectedImageId && newItems[0]) {
-      setSelectedImageId(newItems[0].id);
+    if (!activeId && newItems[0]) {
+      setActiveId(newItems[0].id);
     }
 
-    // Process new items
-    triggerRecompressAll(combined);
+    applySettingsRealtime(settings, combined);
   };
 
-  const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    const files = Array.from(e.target.files);
-    addFiles(files);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
+  // Clipboard Paste Listener (Ctrl+V)
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const files: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith("image/")) {
+          const file = items[i].getAsFile();
+          if (file) files.push(file);
+        }
+      }
+      if (files.length > 0) {
+        handleAddFiles(files);
+        showToast(`${files.length} gambar ditempel dari clipboard!`, "success");
+      }
+    };
 
-  const removeImage = (id: string) => {
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [images, settings, applySettingsRealtime]);
+
+  // Remove Single Image
+  const handleRemoveImage = (id: string) => {
     const item = images.find((i) => i.id === id);
     if (item) {
       if (item.originalUrl) URL.revokeObjectURL(item.originalUrl);
@@ -409,25 +408,26 @@ export default function ImageCompressor() {
     }
     const remaining = images.filter((i) => i.id !== id);
     setImages(remaining);
-    if (selectedImageId === id) {
-      setSelectedImageId(remaining[0]?.id || null);
+    if (activeId === id) {
+      setActiveId(remaining[0]?.id || null);
     }
   };
 
-  const clearAllImages = () => {
+  // Clear All
+  const handleClearAll = () => {
     images.forEach((i) => {
       if (i.originalUrl) URL.revokeObjectURL(i.originalUrl);
       if (i.compressedUrl) URL.revokeObjectURL(i.compressedUrl);
     });
     setImages([]);
-    setSelectedImageId(null);
+    setActiveId(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Download single image
-  const downloadSingle = (item: ImageItem) => {
+  // Download Single
+  const handleDownloadSingle = (item: ImageItem) => {
     if (!item.compressedUrl) return;
-    const ext = outputFormat === "image/webp" ? "webp" : outputFormat === "image/jpeg" ? "jpg" : "png";
+    const ext = settings.outputFormat === "image/webp" ? "webp" : settings.outputFormat === "image/jpeg" ? "jpg" : "png";
     const nameWithoutExt = item.name.substring(0, item.name.lastIndexOf(".")) || item.name;
     const a = document.createElement("a");
     a.href = item.compressedUrl;
@@ -435,22 +435,23 @@ export default function ImageCompressor() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    showToast("Gambar berhasil diunduh!", "success");
   };
 
-  // Download all as ZIP
-  const downloadAllAsZip = async () => {
+  // Download All as ZIP
+  const handleDownloadZip = async () => {
     if (images.length === 0) return;
     setIsZipping(true);
-    showToast("Mengemas semua file terkompresi ke ZIP...", "info");
+    showToast("Mengemas file ke ZIP...", "info");
 
     try {
       const zip = new JSZip();
-      const ext = outputFormat === "image/webp" ? "webp" : outputFormat === "image/jpeg" ? "jpg" : "png";
+      const ext = settings.outputFormat === "image/webp" ? "webp" : settings.outputFormat === "image/jpeg" ? "jpg" : "png";
 
       images.forEach((item, index) => {
         if (item.compressedBlob) {
           const nameWithoutExt = item.name.substring(0, item.name.lastIndexOf(".")) || item.name;
-          zip.file(`${nameWithoutExt}-clyra-${index + 1}.${ext}`, item.compressedBlob);
+          zip.file(`${nameWithoutExt}-compressed-${index + 1}.${ext}`, item.compressedBlob);
         }
       });
 
@@ -458,82 +459,61 @@ export default function ImageCompressor() {
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `clyra-compressed-batch-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.download = `clyra-images-bundle-${Date.now().toString().slice(-4)}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showToast("File ZIP berhasil diunduh!", "success");
-    } catch (err) {
-      showToast("Gagal membuat file ZIP.", "error");
+      showToast("ZIP berhasil diunduh!", "success");
+    } catch {
+      showToast("Gagal membuat ZIP.", "error");
     } finally {
       setIsZipping(false);
     }
   };
 
-  // Quick preset apply
-  const applyPreset = (pName: "webMax" | "balanced" | "eco" | "lossless") => {
-    if (pName === "webMax") {
-      setMode("quality");
-      setQuality(88);
-      setOutputFormat("image/webp");
-      setResizeMode("preset");
-      setMaxWidth(1920);
-    } else if (pName === "balanced") {
-      setMode("quality");
-      setQuality(75);
-      setOutputFormat("image/webp");
-      setResizeMode("preset");
-      setMaxWidth(1440);
-    } else if (pName === "eco") {
-      setMode("quality");
-      setQuality(55);
-      setOutputFormat("image/webp");
-      setResizeMode("preset");
-      setMaxWidth(1080);
-    } else if (pName === "lossless") {
-      setMode("quality");
-      setQuality(95);
-      setOutputFormat("image/png");
-      setResizeMode("original");
+  // Preset Shortcuts
+  const applyPreset = (preset: "web" | "doc" | "hd" | "max") => {
+    let nextSt: SettingsState;
+    if (preset === "web") {
+      nextSt = { ...settings, mode: "quality", quality: 80, outputFormat: "image/webp", resizeMode: "preset", maxWidth: 1920 };
+    } else if (preset === "doc") {
+      nextSt = { ...settings, mode: "targetSize", targetKb: 100, outputFormat: "image/jpeg", resizeMode: "original" };
+    } else if (preset === "hd") {
+      nextSt = { ...settings, mode: "quality", quality: 92, outputFormat: "image/png", resizeMode: "original" };
+    } else {
+      nextSt = { ...settings, mode: "quality", quality: 50, outputFormat: "image/webp", resizeMode: "percentage", percentage: 75 };
     }
-    setTimeout(() => triggerRecompressAll(), 50);
+    setSettings(nextSt);
+    applySettingsRealtime(nextSt);
+    showToast("Preset diterapkan!", "info");
   };
 
-  // Split view dragging handler
-  const handleSplitMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDraggingSplit || !splitContainerRef.current) return;
+  // Split-Slider Drag Handlers
+  const handleSplitMove = (clientX: number) => {
+    if (!splitContainerRef.current) return;
     const rect = splitContainerRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
     const percent = Math.round((x / rect.width) * 100);
     setSplitPos(percent);
   };
 
-  const handleSplitTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!splitContainerRef.current || !e.touches[0]) return;
-    const rect = splitContainerRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(e.touches[0].clientX - rect.left, rect.width));
-    const percent = Math.round((x / rect.width) * 100);
-    setSplitPos(percent);
-  };
-
-  // Calculate Aggregates
-  const totalOriginalBytes = images.reduce((acc, i) => acc + i.originalSize, 0);
-  const totalCompressedBytes = images.reduce((acc, i) => acc + (i.compressedSize || i.originalSize), 0);
-  const totalSavedBytes = Math.max(0, totalOriginalBytes - totalCompressedBytes);
-  const totalSavedPercent =
-    totalOriginalBytes > 0 ? Math.round((totalSavedBytes / totalOriginalBytes) * 100) : 0;
+  // Aggregate Stats
+  const totalOrig = images.reduce((acc, i) => acc + i.originalSize, 0);
+  const totalComp = images.reduce((acc, i) => acc + (i.compressedSize || i.originalSize), 0);
+  const savedBytes = Math.max(0, totalOrig - totalComp);
+  const savedPercent = totalOrig > 0 ? Math.round((savedBytes / totalOrig) * 100) : 0;
 
   return (
     <div className="space-y-8">
-      {/* Top Upload Zone (When Empty OR Floating Bar when items exist) */}
+      {/* 1. UPLOAD BOX (When No Images) */}
       {images.length === 0 ? (
         <div
           onClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
-            if (e.dataTransfer.files) addFiles(Array.from(e.dataTransfer.files));
+            if (e.dataTransfer.files) handleAddFiles(Array.from(e.dataTransfer.files));
           }}
           className="border-2 border-dashed border-slate-800 hover:border-indigo-500/60 bg-[#0e111a]/70 hover:bg-[#121524] rounded-3xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-300 group shadow-2xl space-y-4"
         >
@@ -542,7 +522,10 @@ export default function ImageCompressor() {
             type="file"
             multiple
             accept="image/png, image/jpeg, image/webp, image/bmp, image/avif"
-            onChange={handleFileInputChange}
+            onChange={(e) => {
+              if (e.target.files) handleAddFiles(Array.from(e.target.files));
+              if (fileInputRef.current) fileInputRef.current.value = "";
+            }}
             className="hidden"
           />
 
@@ -552,14 +535,13 @@ export default function ImageCompressor() {
 
           <div className="space-y-1">
             <h3 className="text-xl font-bold text-white group-hover:text-indigo-300 transition-colors">
-              Pilih atau Tarik File Gambar ke Sini (Bisa Banyak / Batch)
+              Pilih atau Tarik Gambar ke Sini (Bisa Banyak / Batch)
             </h3>
             <p className="text-xs text-slate-400 max-w-md mx-auto">
-              Mendukung PNG, JPG, JPEG, WebP, AVIF. Anda juga bisa langsung menempel screenshot dengan <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono text-[10px] border border-slate-700">Ctrl + V</kbd>.
+              Mendukung PNG, JPG, JPEG, WebP, AVIF. Atau langsung tempel screenshot dengan <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono text-[10px] border border-slate-700">Ctrl + V</kbd>.
             </p>
           </div>
 
-          {/* Quick Features Highlight */}
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4 text-[11px] font-mono text-slate-400">
             <div className="flex items-center gap-1.5 bg-slate-900/90 px-3 py-1.5 rounded-full border border-slate-800">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
@@ -576,9 +558,9 @@ export default function ImageCompressor() {
           </div>
         </div>
       ) : (
-        <div className="space-y-6">
-          {/* Top Summary & Batch Action Bar */}
-          <div className="bg-[#0c0e17] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="space-y-6 animate-fadeIn">
+          {/* 2. TOP SUMMARY & BATCH BAR */}
+          <div className="bg-[#0c0e17] border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -588,11 +570,11 @@ export default function ImageCompressor() {
               </div>
               <div className="h-4 w-[1px] bg-slate-800 hidden sm:block" />
               <div className="flex items-center gap-2 text-xs font-mono">
-                <span className="text-slate-500">Asli: {formatFileSize(totalOriginalBytes)}</span>
+                <span className="text-slate-500">Asli: {formatBytes(totalOrig)}</span>
                 <span className="text-slate-600">→</span>
-                <span className="text-emerald-400 font-bold">Hasil: {formatFileSize(totalCompressedBytes)}</span>
+                <span className="text-emerald-400 font-bold">Hasil: {formatBytes(totalComp)}</span>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-                  -{totalSavedPercent}% (-{formatFileSize(totalSavedBytes)})
+                  -{savedPercent}% (Hemat {formatBytes(savedBytes)})
                 </span>
               </div>
             </div>
@@ -603,30 +585,32 @@ export default function ImageCompressor() {
                 type="file"
                 multiple
                 accept="image/png, image/jpeg, image/webp, image/bmp, image/avif"
-                onChange={handleFileInputChange}
+                onChange={(e) => {
+                  if (e.target.files) handleAddFiles(Array.from(e.target.files));
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
                 className="hidden"
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold transition-all active:scale-95"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold transition-all active:scale-95 cursor-pointer"
               >
                 <Upload className="w-3.5 h-3.5" />
                 <span>Tambah Gambar</span>
               </button>
 
               <button
-                onClick={clearAllImages}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-red-950/40 border border-slate-800 hover:border-red-800/50 text-slate-400 hover:text-red-300 text-xs transition-colors"
-                title="Hapus semua gambar"
+                onClick={handleClearAll}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-red-950/40 border border-slate-800 hover:border-red-800/50 text-slate-400 hover:text-red-300 text-xs transition-colors cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Bersihkan</span>
               </button>
 
               <button
-                onClick={downloadAllAsZip}
+                onClick={handleDownloadZip}
                 disabled={isZipping || images.length === 0}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 active:scale-95 transition-all disabled:opacity-40"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
               >
                 <Archive className="w-4 h-4" />
                 <span>{isZipping ? "Mengemas ZIP..." : `Unduh Semua ZIP (${images.length})`}</span>
@@ -634,11 +618,11 @@ export default function ImageCompressor() {
             </div>
           </div>
 
-          {/* Batch Thumbnails Carousel Strip */}
+          {/* 3. MULTI-IMAGE CAROUSEL STRIP */}
           {images.length > 1 && (
             <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-thin">
               {images.map((item) => {
-                const isSelected = item.id === currentImage?.id;
+                const isSelected = item.id === activeImage?.id;
                 const saved =
                   item.originalSize > 0 && item.compressedSize > 0
                     ? Math.round(((item.originalSize - item.compressedSize) / item.originalSize) * 100)
@@ -647,11 +631,11 @@ export default function ImageCompressor() {
                 return (
                   <div
                     key={item.id}
-                    onClick={() => setSelectedImageId(item.id)}
+                    onClick={() => setActiveId(item.id)}
                     className={cn(
                       "flex items-center gap-2.5 p-2 rounded-xl border bg-[#0a0c13] shrink-0 cursor-pointer transition-all select-none max-w-[220px]",
                       isSelected
-                        ? "border-indigo-500 bg-indigo-950/20 shadow-md shadow-indigo-500/10"
+                        ? "border-indigo-500 bg-indigo-950/20 shadow-md shadow-indigo-500/10 ring-1 ring-indigo-500/50"
                         : "border-slate-800 hover:border-slate-700"
                     )}
                   >
@@ -663,7 +647,7 @@ export default function ImageCompressor() {
                     <div className="flex-1 min-w-0 text-left">
                       <p className="text-xs font-semibold text-white truncate">{item.name}</p>
                       <div className="flex items-center gap-1.5 text-[10px] font-mono mt-0.5">
-                        <span className="text-emerald-400 font-bold">{formatFileSize(item.compressedSize)}</span>
+                        <span className="text-emerald-400 font-bold">{formatBytes(item.compressedSize)}</span>
                         {saved > 0 && (
                           <span className="text-emerald-500">(-{saved}%)</span>
                         )}
@@ -672,10 +656,9 @@ export default function ImageCompressor() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        removeImage(item.id);
+                        handleRemoveImage(item.id);
                       }}
                       className="p-1 text-slate-500 hover:text-red-400"
-                      title="Hapus gambar ini"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -685,372 +668,421 @@ export default function ImageCompressor() {
             </div>
           )}
 
-          {/* Master Controls & Adjustment Engine */}
-          <div className="bg-[#0e111a] border border-slate-800/90 rounded-2xl p-6 shadow-xl space-y-6">
-            {/* Quick Presets Row */}
+          {/* 4. MASTER SETTINGS PANEL (CLEAR TABS) */}
+          <div className="bg-[#0e111a] border border-slate-800/90 rounded-2xl p-5 sm:p-6 shadow-xl space-y-6">
+            {/* Presets Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-800/80">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-indigo-400" />
-                <span className="text-xs font-bold text-white uppercase tracking-wider">Profil Cepat:</span>
+                <span className="text-xs font-bold text-white uppercase tracking-wider">Preset Cepat:</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
-                  onClick={() => applyPreset("webMax")}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 hover:border-indigo-500/40 transition-all"
+                  onClick={() => applyPreset("web")}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer"
                 >
-                  🚀 Web Maksimal (88%)
+                  🚀 Siap Web (WebP 80%)
                 </button>
                 <button
-                  onClick={() => applyPreset("balanced")}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 hover:border-indigo-500/40 transition-all"
+                  onClick={() => applyPreset("doc")}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer"
                 >
-                  ⚖️ Seimbang (75%)
+                  📄 Syarat Berkas (&lt; 100 KB)
                 </button>
                 <button
-                  onClick={() => applyPreset("eco")}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 hover:border-indigo-500/40 transition-all"
+                  onClick={() => applyPreset("hd")}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer"
                 >
-                  🌱 Hemat Ekstrem (55%)
+                  💎 Tajam HD (PNG)
                 </button>
                 <button
-                  onClick={() => applyPreset("lossless")}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 hover:border-indigo-500/40 transition-all"
+                  onClick={() => applyPreset("max")}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer"
                 >
-                  💎 PNG HD
+                  🌱 Hemat Maksimal (50%)
                 </button>
               </div>
             </div>
 
-            {/* Core Settings Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* 1. Mode & Compression Level */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <Gauge className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Mode Kompresi</span>
-                  </span>
-                  <div className="flex items-center bg-[#08090d] p-0.5 rounded-lg border border-slate-800 text-[11px]">
-                    <button
-                      onClick={() => {
-                        setMode("quality");
-                        setTimeout(() => triggerRecompressAll(), 10);
-                      }}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md transition-all",
-                        mode === "quality" ? "bg-indigo-600 text-white font-bold" : "text-slate-400"
-                      )}
-                    >
-                      Kualitas
-                    </button>
-                    <button
-                      onClick={() => {
-                        setMode("targetSize");
-                        setTimeout(() => triggerRecompressAll(), 10);
-                      }}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md transition-all",
-                        mode === "targetSize" ? "bg-indigo-600 text-white font-bold" : "text-slate-400"
-                      )}
-                    >
-                      Target KB
-                    </button>
-                  </div>
-                </div>
-
-                {mode === "quality" ? (
-                  <div className="space-y-2 pt-1">
-                    <div className="flex items-center justify-between text-xs font-mono">
-                      <span className="text-slate-400">Kualitas Gambar</span>
-                      <span className="text-indigo-400 font-bold">{quality}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="5"
-                      max="100"
-                      value={quality}
-                      onChange={(e) => {
-                        setQuality(Number(e.target.value));
-                        triggerRecompressAll();
-                      }}
-                      className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-2 pt-1">
-                    <div className="flex items-center justify-between text-xs font-mono">
-                      <span className="text-slate-400">Target Maksimal</span>
-                      <span className="text-indigo-400 font-bold">{targetKb} KB</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="10"
-                        max="10000"
-                        value={targetKb}
-                        onChange={(e) => {
-                          setTargetKb(Math.max(5, Number(e.target.value)));
-                          triggerRecompressAll();
-                        }}
-                        className="w-full bg-[#08090d] border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-mono text-white focus:border-indigo-500 outline-none"
-                      />
-                      <span className="text-xs text-slate-500 font-mono">KB</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {[50, 100, 200, 500, 1024].map((kb) => (
-                        <button
-                          key={kb}
-                          onClick={() => {
-                            setTargetKb(kb);
-                            triggerRecompressAll();
-                          }}
-                          className={cn(
-                            "px-2 py-0.5 rounded text-[10px] font-mono border transition-colors",
-                            targetKb === kb
-                              ? "bg-indigo-600/30 text-indigo-300 border-indigo-500"
-                              : "bg-slate-900 text-slate-400 border-slate-800"
-                          )}
-                        >
-                          {kb >= 1024 ? `${kb / 1024}MB` : `${kb}KB`}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+            {/* Sub-Tabs: 1. Kompresi | 2. Resolusi | 3. Filter Visual */}
+            <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+              <button
+                onClick={() => setActiveTab("compression")}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer",
+                  activeTab === "compression"
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                    : "text-slate-400 hover:text-white bg-slate-900/60"
                 )}
-              </div>
+              >
+                <Gauge className="w-3.5 h-3.5" />
+                <span>1. Mode Kompresi &amp; Format</span>
+              </button>
 
-              {/* 2. Format & Dimension Scaling */}
-              <div className="space-y-3">
-                <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Format &amp; Resolusi</span>
-                </span>
+              <button
+                onClick={() => setActiveTab("resize")}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer",
+                  activeTab === "resize"
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                    : "text-slate-400 hover:text-white bg-slate-900/60"
+                )}
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>2. Ubah Ukuran (Resize)</span>
+              </button>
 
-                <div className="grid grid-cols-3 gap-1.5 bg-[#08090d] p-1 rounded-xl border border-slate-800 text-xs">
-                  {(
-                    [
-                      { id: "image/webp", label: "WebP" },
-                      { id: "image/jpeg", label: "JPG" },
-                      { id: "image/png", label: "PNG" },
-                    ] as const
-                  ).map((fmt) => (
-                    <button
-                      key={fmt.id}
-                      onClick={() => {
-                        setOutputFormat(fmt.id);
-                        triggerRecompressAll();
-                      }}
-                      className={cn(
-                        "py-1.5 rounded-lg font-semibold transition-all text-center",
-                        outputFormat === fmt.id
-                          ? "bg-indigo-600 text-white shadow-sm"
-                          : "text-slate-400 hover:text-white"
-                      )}
-                    >
-                      {fmt.label}
-                    </button>
-                  ))}
+              <button
+                onClick={() => setActiveTab("filters")}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer",
+                  activeTab === "filters"
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                    : "text-slate-400 hover:text-white bg-slate-900/60"
+                )}
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>3. Putar &amp; Filter Visual</span>
+              </button>
+            </div>
+
+            {/* TAB CONTENT 1: COMPRESSION & FORMAT */}
+            {activeTab === "compression" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
+                {/* Engine Mode */}
+                <div className="space-y-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white">Metode Kompresi:</span>
+                    <div className="flex items-center bg-[#08090d] p-0.5 rounded-lg border border-slate-800 text-xs">
+                      <button
+                        onClick={() => updateSetting("mode", "quality")}
+                        className={cn(
+                          "px-3 py-1 rounded-md transition-all cursor-pointer",
+                          settings.mode === "quality" ? "bg-indigo-600 text-white font-bold" : "text-slate-400"
+                        )}
+                      >
+                        Slider Kualitas (%)
+                      </button>
+                      <button
+                        onClick={() => updateSetting("mode", "targetSize")}
+                        className={cn(
+                          "px-3 py-1 rounded-md transition-all cursor-pointer",
+                          settings.mode === "targetSize" ? "bg-indigo-600 text-white font-bold" : "text-slate-400"
+                        )}
+                      >
+                        Target Ukuran (KB)
+                      </button>
+                    </div>
+                  </div>
+
+                  {settings.mode === "quality" ? (
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center justify-between text-xs font-mono">
+                        <span className="text-slate-400">Tingkat Kualitas Gambar</span>
+                        <span className="text-indigo-400 font-bold text-sm">{settings.quality}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="5"
+                        max="100"
+                        value={settings.quality}
+                        onChange={(e) => updateSetting("quality", Number(e.target.value))}
+                        className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                      />
+                      <p className="text-[11px] text-slate-500">
+                        Geser ke kiri untuk file lebih ringan, atau ke kanan untuk detail gambar lebih tajam.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pt-1">
+                      <div className="flex items-center justify-between text-xs font-mono">
+                        <span className="text-slate-400">Batas Maksimal Ukuran File</span>
+                        <span className="text-indigo-400 font-bold text-sm">{settings.targetKb} KB</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="10"
+                          max="10000"
+                          value={settings.targetKb}
+                          onChange={(e) => updateSetting("targetKb", Math.max(5, Number(e.target.value)))}
+                          className="w-full bg-[#08090d] border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:border-indigo-500 outline-none"
+                        />
+                        <span className="text-xs text-slate-400 font-mono">KB</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[50, 100, 200, 500, 1024].map((kb) => (
+                          <button
+                            key={kb}
+                            onClick={() => updateSetting("targetKb", kb)}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg text-xs font-mono border transition-colors cursor-pointer",
+                              settings.targetKb === kb
+                                ? "bg-indigo-600 text-white border-indigo-500 font-bold"
+                                : "bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700"
+                            )}
+                          >
+                            {kb >= 1024 ? `${kb / 1024} MB` : `${kb} KB`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Resize Selection */}
-                <select
-                  value={resizeMode}
-                  onChange={(e) => {
-                    setResizeMode(e.target.value as any);
-                    triggerRecompressAll();
-                  }}
-                  className="w-full bg-[#08090d] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-indigo-500 outline-none"
-                >
-                  <option value="original">Resolusi Asli (100%)</option>
-                  <option value="preset">Preset Max Lebar (1920 / 1280 / 800)</option>
-                  <option value="percentage">Skala Persentase (75%, 50%, 25%)</option>
-                  <option value="custom">Kustom Lebar × Tinggi</option>
-                </select>
+                {/* Output Format */}
+                <div className="space-y-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                  <div>
+                    <span className="text-xs font-bold text-white block mb-1">Format Gambar Output:</span>
+                    <p className="text-[11px] text-slate-400">Pilih format kompresi yang diinginkan.</p>
+                  </div>
 
-                {resizeMode === "preset" && (
-                  <div className="flex gap-1.5">
+                  <div className="grid grid-cols-3 gap-2">
+                    {(
+                      [
+                        { id: "image/webp", name: "WebP", desc: "Paling Ringan & Modern" },
+                        { id: "image/jpeg", name: "JPG / JPEG", desc: "Standar Foto Universal" },
+                        { id: "image/png", name: "PNG", desc: "Tajam & Transparan" },
+                      ] as const
+                    ).map((fmt) => (
+                      <button
+                        key={fmt.id}
+                        onClick={() => updateSetting("outputFormat", fmt.id)}
+                        className={cn(
+                          "p-3 rounded-xl border text-left flex flex-col justify-between gap-1 transition-all cursor-pointer",
+                          settings.outputFormat === fmt.id
+                            ? "bg-indigo-600/20 border-indigo-500 text-white ring-1 ring-indigo-500/50"
+                            : "bg-slate-900/80 border-slate-800 text-slate-400 hover:text-white"
+                        )}
+                      >
+                        <span className="text-xs font-bold">{fmt.name}</span>
+                        <span className="text-[10px] text-slate-500 leading-tight">{fmt.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB CONTENT 2: RESIZE */}
+            {activeTab === "resize" && (
+              <div className="space-y-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 animate-fadeIn">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-xs font-bold text-white block">Pilihan Skala Resolusi:</span>
+                    <p className="text-[11px] text-slate-400">
+                      Dimensi Asli: {activeImage?.originalWidth || 0} × {activeImage?.originalHeight || 0} px
+                    </p>
+                  </div>
+
+                  <select
+                    value={settings.resizeMode}
+                    onChange={(e) => updateSetting("resizeMode", e.target.value as any)}
+                    className="bg-[#08090d] border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none cursor-pointer"
+                  >
+                    <option value="original">Resolusi Asli (100%)</option>
+                    <option value="preset">Preset Max Lebar (1920 / 1280 / 800)</option>
+                    <option value="percentage">Skala Persentase (75%, 50%, 25%)</option>
+                    <option value="custom">Kustom Lebar × Tinggi</option>
+                  </select>
+                </div>
+
+                {settings.resizeMode === "preset" && (
+                  <div className="flex flex-wrap gap-2 pt-2">
                     {[1920, 1280, 800, 500].map((w) => (
                       <button
                         key={w}
-                        onClick={() => {
-                          setMaxWidth(w);
-                          triggerRecompressAll();
-                        }}
+                        onClick={() => updateSetting("maxWidth", w)}
                         className={cn(
-                          "flex-1 py-1 rounded-lg text-[10px] font-mono border",
-                          maxWidth === w
-                            ? "bg-indigo-600/30 text-indigo-300 border-indigo-500"
-                            : "bg-slate-900 text-slate-400 border-slate-800"
+                          "px-4 py-2 rounded-xl text-xs font-mono border transition-all cursor-pointer",
+                          settings.maxWidth === w
+                            ? "bg-indigo-600 text-white border-indigo-500 font-bold"
+                            : "bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700"
                         )}
                       >
-                        {w}px
+                        Maksimal {w}px
                       </button>
                     ))}
                   </div>
                 )}
 
-                {resizeMode === "percentage" && (
-                  <div className="flex items-center gap-2">
+                {settings.resizeMode === "percentage" && (
+                  <div className="space-y-2 pt-2">
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <span className="text-slate-400">Persentase Skala</span>
+                      <span className="text-indigo-400 font-bold">{settings.percentage}%</span>
+                    </div>
                     <input
                       type="range"
                       min="10"
                       max="95"
-                      value={percentage}
-                      onChange={(e) => {
-                        setPercentage(Number(e.target.value));
-                        triggerRecompressAll();
-                      }}
+                      value={settings.percentage}
+                      onChange={(e) => updateSetting("percentage", Number(e.target.value))}
                       className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                     />
-                    <span className="text-xs font-mono text-indigo-400 w-10 text-right">{percentage}%</span>
                   </div>
                 )}
 
-                {resizeMode === "custom" && (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      value={customWidth}
-                      onChange={(e) => {
-                        const w = Number(e.target.value);
-                        setCustomWidth(w);
-                        if (keepAspectRatio && currentImage?.originalWidth) {
-                          setCustomHeight(Math.round((w * currentImage.originalHeight) / currentImage.originalWidth));
-                        }
-                        triggerRecompressAll();
-                      }}
-                      className="w-20 bg-[#08090d] border border-slate-800 rounded-lg px-2 py-1 text-xs font-mono text-white"
-                      placeholder="W"
-                    />
-                    <span className="text-slate-500 text-xs">×</span>
-                    <input
-                      type="number"
-                      value={customHeight}
-                      onChange={(e) => {
-                        const h = Number(e.target.value);
-                        setCustomHeight(h);
-                        triggerRecompressAll();
-                      }}
-                      className="w-20 bg-[#08090d] border border-slate-800 rounded-lg px-2 py-1 text-xs font-mono text-white"
-                      placeholder="H"
-                    />
+                {settings.resizeMode === "custom" && (
+                  <div className="flex items-center gap-3 pt-2">
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-400 font-mono">Lebar (px)</label>
+                      <input
+                        type="number"
+                        value={settings.customWidth}
+                        onChange={(e) => {
+                          const w = Number(e.target.value);
+                          const newSt = {
+                            ...settings,
+                            customWidth: w,
+                            customHeight:
+                              settings.keepAspectRatio && activeImage?.originalWidth
+                                ? Math.round((w * activeImage.originalHeight) / activeImage.originalWidth)
+                                : settings.customHeight,
+                          };
+                          setSettings(newSt);
+                          applySettingsRealtime(newSt);
+                        }}
+                        className="w-28 bg-[#08090d] border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-mono text-white"
+                      />
+                    </div>
+
+                    <span className="text-slate-500 text-base pt-4">×</span>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-400 font-mono">Tinggi (px)</label>
+                      <input
+                        type="number"
+                        value={settings.customHeight}
+                        onChange={(e) => updateSetting("customHeight", Number(e.target.value))}
+                        className="w-28 bg-[#08090d] border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-mono text-white"
+                      />
+                    </div>
+
                     <button
-                      onClick={() => setKeepAspectRatio(!keepAspectRatio)}
+                      onClick={() => updateSetting("keepAspectRatio", !settings.keepAspectRatio)}
                       className={cn(
-                        "p-1.5 rounded-lg border",
-                        keepAspectRatio ? "bg-indigo-600/30 text-indigo-300 border-indigo-500" : "bg-slate-900 text-slate-500 border-slate-800"
+                        "mt-5 p-2 rounded-xl border transition-colors cursor-pointer",
+                        settings.keepAspectRatio
+                          ? "bg-indigo-600/30 text-indigo-300 border-indigo-500"
+                          : "bg-slate-900 text-slate-500 border-slate-800"
                       )}
                       title="Kunci Aspek Rasio"
                     >
-                      {keepAspectRatio ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                      {settings.keepAspectRatio ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
                     </button>
                   </div>
                 )}
               </div>
+            )}
 
-              {/* 3. Visual Adjustments & Filters */}
-              <div className="space-y-3">
-                <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <Sliders className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Transformasi &amp; Filter</span>
-                </span>
+            {/* TAB CONTENT 3: FILTERS & TRANSFORM */}
+            {activeTab === "filters" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 animate-fadeIn">
+                {/* Rotations & Flips */}
+                <div className="space-y-3">
+                  <span className="text-xs font-bold text-white block">Orientasi &amp; Posisi:</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => updateSetting("rotation", (settings.rotation + 90) % 360)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-medium cursor-pointer"
+                    >
+                      <RotateCw className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Putar ({settings.rotation}°)</span>
+                    </button>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setRotation((prev) => (prev + 90) % 360);
-                      triggerRecompressAll();
-                    }}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs"
-                    title="Putar 90 Derajat"
-                  >
-                    <RotateCw className="w-3.5 h-3.5" />
-                    <span>{rotation}°</span>
-                  </button>
+                    <button
+                      onClick={() => updateSetting("flipH", !settings.flipH)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-medium transition-colors cursor-pointer",
+                        settings.flipH ? "bg-indigo-600/30 text-indigo-300 border-indigo-500" : "bg-slate-900 text-slate-400 border-slate-800"
+                      )}
+                    >
+                      <FlipHorizontal className="w-3.5 h-3.5" />
+                      <span>Cermin Horizontal</span>
+                    </button>
 
-                  <button
-                    onClick={() => {
-                      setFlipH(!flipH);
-                      triggerRecompressAll();
-                    }}
-                    className={cn(
-                      "p-1.5 rounded-xl border transition-colors",
-                      flipH ? "bg-indigo-600/30 text-indigo-300 border-indigo-500" : "bg-slate-900 text-slate-400 border-slate-800"
-                    )}
-                    title="Flip Horizontal"
-                  >
-                    <FlipHorizontal className="w-4 h-4" />
-                  </button>
+                    <button
+                      onClick={() => updateSetting("flipV", !settings.flipV)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-medium transition-colors cursor-pointer",
+                        settings.flipV ? "bg-indigo-600/30 text-indigo-300 border-indigo-500" : "bg-slate-900 text-slate-400 border-slate-800"
+                      )}
+                    >
+                      <FlipVertical className="w-3.5 h-3.5" />
+                      <span>Cermin Vertikal</span>
+                    </button>
 
-                  <button
-                    onClick={() => {
-                      setFlipV(!flipV);
-                      triggerRecompressAll();
-                    }}
-                    className={cn(
-                      "p-1.5 rounded-xl border transition-colors",
-                      flipV ? "bg-indigo-600/30 text-indigo-300 border-indigo-500" : "bg-slate-900 text-slate-400 border-slate-800"
-                    )}
-                    title="Flip Vertical"
-                  >
-                    <FlipVertical className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setIsGrayscale(!isGrayscale);
-                      triggerRecompressAll();
-                    }}
-                    className={cn(
-                      "px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors",
-                      isGrayscale ? "bg-indigo-600/30 text-indigo-300 border-indigo-500" : "bg-slate-900 text-slate-400 border-slate-800"
-                    )}
-                    title="Ubah ke Hitam Putih (Grayscale)"
-                  >
-                    B&amp;W
-                  </button>
+                    <button
+                      onClick={() => updateSetting("isGrayscale", !settings.isGrayscale)}
+                      className={cn(
+                        "px-3 py-2 rounded-xl border text-xs font-medium transition-colors cursor-pointer",
+                        settings.isGrayscale ? "bg-indigo-600/30 text-indigo-300 border-indigo-500 font-bold" : "bg-slate-900 text-slate-400 border-slate-800"
+                      )}
+                    >
+                      Hitam Putih (Grayscale)
+                    </button>
+                  </div>
                 </div>
 
-                {/* Brightness & Contrast Sliders */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <SunMedium className="w-3 h-3 text-amber-400" /> Kecerahan
-                    </span>
-                    <span>{brightness}%</span>
+                {/* Brightness & Contrast */}
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-mono text-slate-300">
+                      <span className="flex items-center gap-1.5">
+                        <SunMedium className="w-3.5 h-3.5 text-amber-400" /> Kecerahan
+                      </span>
+                      <span>{settings.brightness}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="50"
+                      max="150"
+                      value={settings.brightness}
+                      onChange={(e) => updateSetting("brightness", Number(e.target.value))}
+                      className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                    />
                   </div>
-                  <input
-                    type="range"
-                    min="50"
-                    max="150"
-                    value={brightness}
-                    onChange={(e) => {
-                      setBrightness(Number(e.target.value));
-                      triggerRecompressAll();
-                    }}
-                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                  />
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-mono text-slate-300">
+                      <span className="flex items-center gap-1.5">
+                        <Contrast className="w-3.5 h-3.5 text-indigo-400" /> Kontras
+                      </span>
+                      <span>{settings.contrast}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="50"
+                      max="150"
+                      value={settings.contrast}
+                      onChange={(e) => updateSetting("contrast", Number(e.target.value))}
+                      className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* PREVIEW & COMPARISON AREA */}
-          {currentImage && (
+          {/* 5. LIVE PREVIEW & INTERACTIVE COMPARISON */}
+          {activeImage && (
             <div className="space-y-4">
-              {/* Preview Mode Selector Bar */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <span className="font-semibold text-white">{currentImage.name}</span>
-                  <span>•</span>
-                  <span>{currentImage.originalWidth} × {currentImage.originalHeight}px</span>
+              {/* Header Info & Switch View Mode */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0c0e17] border border-slate-800 p-3.5 rounded-2xl">
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <span className="font-bold text-white truncate max-w-[200px]">{activeImage.name}</span>
+                  <span className="text-slate-600">•</span>
+                  <span className="text-slate-400">{activeImage.compressedWidth} × {activeImage.compressedHeight} px</span>
+                  <span className="text-slate-600">•</span>
+                  <span className="text-indigo-400 uppercase font-semibold">{settings.outputFormat.replace("image/", "")}</span>
                 </div>
 
-                <div className="flex items-center bg-[#0e111a] p-1 rounded-xl border border-slate-800 text-xs">
+                <div className="flex items-center bg-[#08090d] p-1 rounded-xl border border-slate-800 text-xs">
                   <button
                     onClick={() => setPreviewMode("split")}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors",
+                      "flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors cursor-pointer",
                       previewMode === "split" ? "bg-indigo-600 text-white font-bold" : "text-slate-400 hover:text-white"
                     )}
                   >
@@ -1060,7 +1092,7 @@ export default function ImageCompressor() {
                   <button
                     onClick={() => setPreviewMode("sideBySide")}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors",
+                      "flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors cursor-pointer",
                       previewMode === "sideBySide" ? "bg-indigo-600 text-white font-bold" : "text-slate-400 hover:text-white"
                     )}
                   >
@@ -1070,72 +1102,84 @@ export default function ImageCompressor() {
                 </div>
               </div>
 
-              {/* 1. Interactive Split Slider Mode */}
+              {/* Split Slider Preview Mode */}
               {previewMode === "split" ? (
                 <div
                   ref={splitContainerRef}
-                  onMouseMove={handleSplitMouseMove}
-                  onTouchMove={handleSplitTouchMove}
+                  onMouseMove={(e) => isDraggingSplit && handleSplitMove(e.clientX)}
+                  onTouchMove={(e) => e.touches[0] && handleSplitMove(e.touches[0].clientX)}
                   onMouseDown={() => setIsDraggingSplit(true)}
                   onMouseUp={() => setIsDraggingSplit(false)}
                   onTouchStart={() => setIsDraggingSplit(true)}
                   onTouchEnd={() => setIsDraggingSplit(false)}
                   className="relative w-full h-80 sm:h-96 md:h-[460px] bg-[#07090e] rounded-2xl overflow-hidden border border-slate-800 shadow-2xl select-none cursor-ew-resize"
                 >
-                  {/* Left Layer: Original Image */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  {/* Left: Original Layer */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-4">
                     <img
-                      src={currentImage.originalUrl}
+                      src={activeImage.originalUrl}
                       alt="Original"
                       className="max-w-full max-h-full object-contain"
                     />
-                    <div className="absolute top-4 left-4 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-[11px] font-mono text-slate-300 border border-slate-700">
-                      Asli: {formatFileSize(currentImage.originalSize)}
+                    <div className="absolute top-4 left-4 px-3 py-1.5 rounded-xl bg-black/80 backdrop-blur-md text-xs font-mono text-slate-300 border border-slate-700 shadow-lg">
+                      <span className="text-slate-500 mr-1.5">ASLI:</span>
+                      <span className="font-bold text-white">{formatBytes(activeImage.originalSize)}</span>
                     </div>
                   </div>
 
-                  {/* Right Layer: Compressed Image (Clipped by splitPos) */}
+                  {/* Right: Compressed Layer (Clipped) */}
                   <div
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden"
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden p-4"
                     style={{ clipPath: `polygon(${splitPos}% 0, 100% 0, 100% 100%, ${splitPos}% 100%)` }}
                   >
-                    {currentImage.compressedUrl && (
+                    {activeImage.compressedUrl && (
                       <img
-                        src={currentImage.compressedUrl}
+                        src={activeImage.compressedUrl}
                         alt="Compressed"
                         className="max-w-full max-h-full object-contain"
                       />
                     )}
-                    <div className="absolute top-4 right-4 px-2.5 py-1 rounded-lg bg-emerald-950/80 backdrop-blur-md text-[11px] font-mono text-emerald-300 border border-emerald-700 font-bold">
-                      Hasil: {formatFileSize(currentImage.compressedSize)} (-
-                      {currentImage.originalSize > 0
-                        ? Math.round(((currentImage.originalSize - currentImage.compressedSize) / currentImage.originalSize) * 100)
-                        : 0}
-                      %)
+                    <div className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-emerald-950/90 backdrop-blur-md text-xs font-mono text-emerald-300 border border-emerald-700/80 shadow-lg font-bold">
+                      <span className="mr-1.5">HASIL:</span>
+                      <span>{formatBytes(activeImage.compressedSize)}</span>
+                      <span className="ml-1.5 text-emerald-400">
+                        (-
+                        {activeImage.originalSize > 0
+                          ? Math.round(((activeImage.originalSize - activeImage.compressedSize) / activeImage.originalSize) * 100)
+                          : 0}
+                        %)
+                      </span>
                     </div>
                   </div>
 
-                  {/* Draggable Divider Line */}
+                  {/* Drag Line Indicator */}
                   <div
-                    className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)] pointer-events-none"
+                    className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_15px_rgba(255,255,255,0.9)] pointer-events-none"
                     style={{ left: `${splitPos}%` }}
                   >
-                    <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-indigo-600 border-2 border-white shadow-xl flex items-center justify-center text-white">
+                    <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-indigo-600 border-2 border-white shadow-2xl flex items-center justify-center text-white">
                       <Split className="w-3.5 h-3.5" />
                     </div>
                   </div>
+
+                  {/* Bottom Drag Guide */}
+                  <div className="absolute bottom-3 inset-x-0 text-center pointer-events-none">
+                    <span className="text-[11px] font-mono bg-black/70 px-3 py-1 rounded-full text-slate-400 border border-slate-800">
+                      ↔ Geser garis untuk membandingkan piksel asli vs hasil
+                    </span>
+                  </div>
                 </div>
               ) : (
-                /* 2. Side by Side Mode */
+                /* Side-by-Side Mode */
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-[#0c0e17] border border-slate-800 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between text-xs font-mono">
-                      <span className="text-slate-400">GAMBAR ASLI</span>
-                      <span className="text-slate-300 font-bold">{formatFileSize(currentImage.originalSize)}</span>
+                      <span className="text-slate-400 font-bold">GAMBAR ASLI</span>
+                      <span className="text-white bg-slate-900 px-2 py-0.5 rounded border border-slate-800">{formatBytes(activeImage.originalSize)}</span>
                     </div>
-                    <div className="relative w-full h-72 bg-[#07090e] rounded-xl overflow-hidden flex items-center justify-center border border-slate-800">
+                    <div className="relative w-full h-72 bg-[#07090e] rounded-xl overflow-hidden flex items-center justify-center border border-slate-800 p-2">
                       <img
-                        src={currentImage.originalUrl}
+                        src={activeImage.originalUrl}
                         alt="Original"
                         className="max-w-full max-h-full object-contain"
                       />
@@ -1145,12 +1189,12 @@ export default function ImageCompressor() {
                   <div className="bg-[#0c0e17] border border-slate-800 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between text-xs font-mono">
                       <span className="text-emerald-400 font-bold">HASIL TERKOMPRESI</span>
-                      <span className="text-emerald-300 font-bold">{formatFileSize(currentImage.compressedSize)}</span>
+                      <span className="text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800 font-bold">{formatBytes(activeImage.compressedSize)}</span>
                     </div>
-                    <div className="relative w-full h-72 bg-[#07090e] rounded-xl overflow-hidden flex items-center justify-center border border-slate-800">
-                      {currentImage.compressedUrl && (
+                    <div className="relative w-full h-72 bg-[#07090e] rounded-xl overflow-hidden flex items-center justify-center border border-slate-800 p-2">
+                      {activeImage.compressedUrl && (
                         <img
-                          src={currentImage.compressedUrl}
+                          src={activeImage.compressedUrl}
                           alt="Compressed"
                           className="max-w-full max-h-full object-contain"
                         />
@@ -1160,27 +1204,15 @@ export default function ImageCompressor() {
                 </div>
               )}
 
-              {/* Single Image Action Bar */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-[#0c0e17] border border-slate-800">
-                <div className="flex items-center gap-3 text-xs font-mono">
-                  <span className="text-slate-400">{currentImage.compressedWidth} × {currentImage.compressedHeight}px</span>
-                  <span className="text-slate-600">•</span>
-                  <span className="text-indigo-400 font-semibold uppercase">{outputFormat.replace("image/", "")}</span>
-                  {currentImage.achievedQuality && (
-                    <>
-                      <span className="text-slate-600">•</span>
-                      <span className="text-emerald-400 font-bold">Quality: ~{currentImage.achievedQuality}%</span>
-                    </>
-                  )}
-                </div>
-
+              {/* Download Active Image Button */}
+              <div className="flex justify-end pt-2">
                 <button
-                  onClick={() => downloadSingle(currentImage)}
-                  disabled={!currentImage.compressedUrl}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition-all active:scale-95 disabled:opacity-40"
+                  onClick={() => handleDownloadSingle(activeImage)}
+                  disabled={!activeImage.compressedUrl}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all active:scale-95 cursor-pointer disabled:opacity-40"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Unduh Gambar Ini ({formatFileSize(currentImage.compressedSize)})</span>
+                  <span>Unduh Gambar Ini ({formatBytes(activeImage.compressedSize)})</span>
                 </button>
               </div>
             </div>
