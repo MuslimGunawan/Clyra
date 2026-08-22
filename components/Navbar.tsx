@@ -49,7 +49,7 @@ export default function Navbar() {
               EARLY ACCESS
             </span>
             <span className="text-slate-300 truncate sm:overflow-visible">
-              Clyra Platform aktif dioptimalkan — aman, terenkripsi, &amp; privat.
+              Clyra Workspace — utilitas cepat, modern &amp; serbaguna.
             </span>
           </div>
           <button
