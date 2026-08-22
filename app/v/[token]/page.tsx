@@ -6,6 +6,7 @@ import PromptsGalleryPage from "@/app/projects/prompts/page";
 import WebProjectsPage from "@/app/projects/web/page";
 import TermsPage from "@/app/terms/page";
 import ToolDetailPage from "@/app/tools/[slug]/page";
+import AdminDashboardPage from "@/app/admin/page";
 
 interface TokenGatewayProps {
   params: Promise<{ token: string }>;
@@ -45,6 +46,10 @@ export default async function EphemeralTokenGatewayPage({ params }: TokenGateway
 
   if (target === "/terms") {
     return <TermsPage />;
+  }
+
+  if (target === "/admin") {
+    return <AdminDashboardPage />;
   }
 
   return <LandingPage />;

@@ -19,6 +19,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [showBetaBar, setShowBetaBar] = useState(true);
+  const [logoTapCount, setLogoTapCount] = useState(0);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -31,6 +32,24 @@ export default function Navbar() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Reset logo tap counter after 3 seconds
+  useEffect(() => {
+    if (logoTapCount > 0) {
+      const timer = setTimeout(() => setLogoTapCount(0), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [logoTapCount]);
+
+  const handleLogoTap = () => {
+    const nextCount = logoTapCount + 1;
+    if (nextCount >= 5) {
+      setLogoTapCount(0);
+      window.dispatchEvent(new Event("clyra_open_admin_vault"));
+    } else {
+      setLogoTapCount(nextCount);
+    }
+  };
+
   const navLinks = [
     { href: "/", label: "Home", icon: Compass },
     { href: "/tools", label: "Tools Hub", icon: Wrench, badge: "11" },
@@ -40,100 +59,107 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Early Access / Announcement Notice Bar */}
-      {showBetaBar && (
-        <div className="bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-indigo-950/80 border-b border-indigo-500/30 px-4 py-1.5 text-[11px] text-indigo-200 flex items-center justify-between gap-3 font-mono">
-          <div className="max-w-7xl mx-auto flex items-center gap-2 text-center sm:text-left justify-center flex-1">
-            <span className="px-1.5 py-0.2 rounded bg-indigo-500/30 text-indigo-200 font-bold border border-indigo-500/40 text-[10px]">
-              EARLY ACCESS
-            </span>
-            <span className="text-slate-300 truncate sm:overflow-visible">
-              Clyra Workspace — utilitas cepat, modern &amp; serbaguna.
-            </span>
-          </div>
-          <button
-            onClick={() => setShowBetaBar(false)}
-            className="text-indigo-400 hover:text-white transition-colors p-1"
-            title="Tutup pengumuman"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Main Top Header */}
-      <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-[#08090d]/80 backdrop-blur-xl transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          {/* Brand Logo with Dynamic Ephemeral routing */}
-          <DynamicLink href="/" className="flex items-center gap-2.5 group shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-500 p-[1px] shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-all duration-300">
-              <div className="w-full h-full bg-[#090b10] rounded-[7px] flex items-center justify-center">
-                <Layers className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform duration-300" />
-              </div>
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold tracking-tight text-white text-base group-hover:text-indigo-300 transition-colors">
-                Clyra<span className="text-indigo-400">.</span>
+      {/* Pinned Sticky Header Container (Fixes Mobile Header Half-Clipped Issue) */}
+      <div className="sticky top-0 z-40 w-full bg-[#08090d]/95 backdrop-blur-xl border-b border-slate-800/80 shadow-md">
+        {/* Early Access / Announcement Notice Bar */}
+        {showBetaBar && (
+          <div className="bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-indigo-950/80 border-b border-indigo-500/30 px-4 py-1.5 text-[11px] text-indigo-200 flex items-center justify-between gap-3 font-mono">
+            <div className="max-w-7xl mx-auto flex items-center gap-2 text-center sm:text-left justify-center flex-1">
+              <span className="px-1.5 py-0.2 rounded bg-indigo-500/30 text-indigo-200 font-bold border border-indigo-500/40 text-[10px]">
+                EARLY ACCESS
               </span>
-              <span className="text-[10px] text-slate-400 font-mono -mt-1 tracking-wider uppercase">
-                Productivity Hub
+              <span className="text-slate-300 truncate sm:overflow-visible">
+                Clyra Workspace — utilitas cepat, modern &amp; serbaguna.
               </span>
             </div>
-          </DynamicLink>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1 bg-slate-900/60 p-1 rounded-full border border-slate-800/70">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              const isActive =
-                link.href === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(link.href);
-
-              return (
-                <DynamicLink
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer",
-                    isActive
-                      ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-                  )}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{link.label}</span>
-                  {link.badge && (
-                    <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.2 rounded-full font-mono border border-indigo-500/30">
-                      {link.badge}
-                    </span>
-                  )}
-                </DynamicLink>
-              );
-            })}
-          </nav>
-
-          {/* Spacious Search Spotlight Trigger (Mobile & Desktop) */}
-          <div className="flex items-center">
             <button
-              onClick={() => setIsCommandOpen(true)}
-              className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs transition-all active:scale-95 w-auto sm:w-56 md:w-64 shadow-sm group"
-              title="Cari Tool, Prompt, atau Projek (Ctrl+K / Cmd+K)"
+              onClick={() => setShowBetaBar(false)}
+              className="text-indigo-400 hover:text-white transition-colors p-1"
+              title="Tutup pengumuman"
             >
-              <div className="flex items-center gap-2">
-                <Search className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
-                <span className="hidden sm:inline text-slate-400 group-hover:text-slate-200">
-                  Cari cepat...
-                </span>
-                <span className="sm:hidden font-medium text-slate-300">Cari</span>
-              </div>
-              <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono bg-slate-800/90 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700">
-                ⌘K
-              </kbd>
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
-        </div>
-      </header>
+        )}
+
+        {/* Main Top Header */}
+        <header className="w-full">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            {/* Brand Logo with 5-Tap Secret Admin Easter Egg */}
+            <div className="flex items-center gap-2.5 group shrink-0 select-none">
+              <div 
+                onClick={handleLogoTap}
+                className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-500 p-[1px] shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-all duration-300 cursor-pointer active:scale-95"
+                title="Clyra Workspace"
+              >
+                <div className="w-full h-full bg-[#090b10] rounded-[7px] flex items-center justify-center">
+                  <Layers className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform duration-300" />
+                </div>
+              </div>
+              <DynamicLink href="/" className="flex flex-col cursor-pointer">
+                <span className="font-bold tracking-tight text-white text-base group-hover:text-indigo-300 transition-colors">
+                  Clyra<span className="text-indigo-400">.</span>
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono -mt-1 tracking-wider uppercase">
+                  Productivity Hub
+                </span>
+              </DynamicLink>
+            </div>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-1 bg-slate-900/60 p-1 rounded-full border border-slate-800/70">
+              {navLinks.map((link) => {
+                const Icon = link.icon;
+                const isActive =
+                  link.href === "/"
+                    ? pathname === "/"
+                    : pathname.startsWith(link.href);
+
+                return (
+                  <DynamicLink
+                    key={link.href}
+                    href={link.href}
+                    className={cn(
+                      "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer",
+                      isActive
+                        ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                    )}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{link.label}</span>
+                    {link.badge && (
+                      <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.2 rounded-full font-mono border border-indigo-500/30">
+                        {link.badge}
+                      </span>
+                    )}
+                  </DynamicLink>
+                );
+              })}
+            </nav>
+
+            {/* Spacious Search Spotlight Trigger (Mobile & Desktop) */}
+            <div className="flex items-center">
+              <button
+                onClick={() => setIsCommandOpen(true)}
+                className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs transition-all active:scale-95 w-auto sm:w-56 md:w-64 shadow-sm group"
+                title="Cari Tool, Prompt, atau Projek (Ctrl+K / Cmd+K)"
+              >
+                <div className="flex items-center gap-2">
+                  <Search className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
+                  <span className="hidden sm:inline text-slate-400 group-hover:text-slate-200">
+                    Cari cepat...
+                  </span>
+                  <span className="sm:hidden font-medium text-slate-300">Cari</span>
+                </div>
+                <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono bg-slate-800/90 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700">
+                  ⌘K
+                </kbd>
+              </button>
+            </div>
+          </div>
+        </header>
+      </div>
 
       {/* Mobile Bottom Navigation Bar (Always Visible & Fully Formatted) */}
       <nav 

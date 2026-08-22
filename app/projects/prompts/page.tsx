@@ -15,6 +15,8 @@ import PromptCard from "@/components/PromptCard";
 import PromptModal from "@/components/PromptModal";
 import AddPromptModal from "@/components/AddPromptModal";
 
+import { getStoredPrompts, saveStoredPrompt } from "@/lib/adminStore";
+
 export default function PromptsGalleryPage() {
   const [promptsList, setPromptsList] = useState<PromptItem[]>(PROMPTS);
   const [searchQuery, setSearchQuery] = useState("");
@@ -22,28 +24,20 @@ export default function PromptsGalleryPage() {
   const [activeModalPrompt, setActiveModalPrompt] = useState<PromptItem | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Load user saved prompts from localStorage on mount
+  const loadData = () => {
+    setPromptsList(getStoredPrompts());
+  };
+
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("clyra_custom_prompts");
-      if (saved) {
-        const customPrompts: PromptItem[] = JSON.parse(saved);
-        setPromptsList([...customPrompts, ...PROMPTS]);
-      }
-    } catch (e) {
-      console.error(e);
-    }
+    loadData();
+    const handleUpdate = () => loadData();
+    window.addEventListener("clyra_prompts_updated", handleUpdate);
+    return () => window.removeEventListener("clyra_prompts_updated", handleUpdate);
   }, []);
 
   const handleAddPrompt = (newPrompt: PromptItem) => {
-    const updated = [newPrompt, ...promptsList];
+    const updated = saveStoredPrompt(newPrompt);
     setPromptsList(updated);
-    try {
-      const currentCustom = JSON.parse(localStorage.getItem("clyra_custom_prompts") || "[]");
-      localStorage.setItem("clyra_custom_prompts", JSON.stringify([newPrompt, ...currentCustom]));
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   const exportPromptsJSON = () => {

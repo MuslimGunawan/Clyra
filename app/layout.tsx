@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { ToastProvider } from "@/components/ToastProvider";
 import TermsGatekeeper from "@/components/TermsGatekeeper";
 import SecurityShield from "@/components/SecurityShield";
+import SecretAdminTrigger from "@/components/SecretAdminTrigger";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -147,6 +148,7 @@ export default function RootLayout({
       >
         <ToastProvider>
           <SecurityShield />
+          <SecretAdminTrigger />
           <Navbar />
           <div className="flex-1 flex flex-col">{children}</div>
           <Footer />

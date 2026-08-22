@@ -12,34 +12,28 @@ import { ProjectItem } from "@/lib/types";
 import ProjectCard from "@/components/ProjectCard";
 import AddProjectModal from "@/components/AddProjectModal";
 
+import { getStoredProjects, saveStoredProject } from "@/lib/adminStore";
+
 export default function WebProjectsPage() {
   const [projectsList, setProjectsList] = useState<ProjectItem[]>(PROJECTS);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("Semua Projek");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Load custom projects from localStorage
+  const loadData = () => {
+    setProjectsList(getStoredProjects());
+  };
+
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("clyra_custom_projects");
-      if (saved) {
-        const custom: ProjectItem[] = JSON.parse(saved);
-        setProjectsList([...custom, ...PROJECTS]);
-      }
-    } catch (e) {
-      console.error(e);
-    }
+    loadData();
+    const handleUpdate = () => loadData();
+    window.addEventListener("clyra_projects_updated", handleUpdate);
+    return () => window.removeEventListener("clyra_projects_updated", handleUpdate);
   }, []);
 
   const handleAddProject = (newProj: ProjectItem) => {
-    const updated = [newProj, ...projectsList];
+    const updated = saveStoredProject(newProj);
     setProjectsList(updated);
-    try {
-      const current = JSON.parse(localStorage.getItem("clyra_custom_projects") || "[]");
-      localStorage.setItem("clyra_custom_projects", JSON.stringify([newProj, ...current]));
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   const exportProjectsJSON = () => {
