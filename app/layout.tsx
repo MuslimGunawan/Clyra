@@ -7,6 +7,7 @@ import { ToastProvider } from "@/components/ToastProvider";
 import TermsGatekeeper from "@/components/TermsGatekeeper";
 import SecurityShield from "@/components/SecurityShield";
 import SecretAdminTrigger from "@/components/SecretAdminTrigger";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -146,14 +147,16 @@ export default function RootLayout({
         suppressHydrationWarning
         className="min-h-full flex flex-col bg-[#08090d] text-slate-100 selection:bg-indigo-500/30 selection:text-white"
       >
-        <ToastProvider>
-          <SecurityShield />
-          <SecretAdminTrigger />
-          <Navbar />
-          <div className="flex-1 flex flex-col">{children}</div>
-          <Footer />
-          <TermsGatekeeper />
-        </ToastProvider>
+        <LanguageProvider>
+          <ToastProvider>
+            <SecurityShield />
+            <SecretAdminTrigger />
+            <Navbar />
+            <div className="flex-1 flex flex-col">{children}</div>
+            <Footer />
+            <TermsGatekeeper />
+          </ToastProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

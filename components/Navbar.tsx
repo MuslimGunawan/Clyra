@@ -14,9 +14,13 @@ import {
 import { cn } from "@/lib/utils";
 import CommandPalette from "./CommandPalette";
 import DynamicLink from "./DynamicLink";
+import HeaderStatusWidget from "./HeaderStatusWidget";
+import LanguageSelector from "./LanguageSelector";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function Navbar() {
   const pathname = usePathname();
+  const { t } = useLanguage();
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [showBetaBar, setShowBetaBar] = useState(true);
   const [logoTapCount, setLogoTapCount] = useState(0);
@@ -51,10 +55,10 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { href: "/", label: "Home", icon: Compass },
-    { href: "/tools", label: "Tools Hub", icon: Wrench, badge: "11" },
-    { href: "/projects/prompts", label: "AI Prompts", icon: Sparkles },
-    { href: "/projects/web", label: "Web Works", icon: FolderGit2 },
+    { href: "/", label: t("nav.home"), icon: Compass },
+    { href: "/tools", label: t("nav.tools"), icon: Wrench, badge: "11" },
+    { href: "/projects/prompts", label: t("nav.prompts"), icon: Sparkles },
+    { href: "/projects/web", label: t("nav.web"), icon: FolderGit2 },
   ];
 
   return (
@@ -66,16 +70,16 @@ export default function Navbar() {
           <div className="bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-indigo-950/80 border-b border-indigo-500/30 px-4 py-1.5 text-[11px] text-indigo-200 flex items-center justify-between gap-3 font-mono">
             <div className="max-w-7xl mx-auto flex items-center gap-2 text-center sm:text-left justify-center flex-1">
               <span className="px-1.5 py-0.2 rounded bg-indigo-500/30 text-indigo-200 font-bold border border-indigo-500/40 text-[10px]">
-                EARLY ACCESS
+                {t("banner.early_access")}
               </span>
               <span className="text-slate-300 truncate sm:overflow-visible">
-                Clyra Workspace — utilitas cepat, modern &amp; serbaguna.
+                {t("banner.subtitle")}
               </span>
             </div>
             <button
               onClick={() => setShowBetaBar(false)}
               className="text-indigo-400 hover:text-white transition-colors p-1"
-              title="Tutup pengumuman"
+              title="Tutup"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -84,8 +88,8 @@ export default function Navbar() {
 
         {/* Main Top Header */}
         <header className="w-full">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-            {/* Brand Logo with 5-Tap Secret Admin Easter Egg */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+            {/* Left: Brand Logo with 5-Tap Secret Admin Easter Egg */}
             <div className="flex items-center gap-2.5 group shrink-0 select-none">
               <div 
                 onClick={handleLogoTap}
@@ -106,7 +110,7 @@ export default function Navbar() {
               </DynamicLink>
             </div>
 
-            {/* Desktop Navigation */}
+            {/* Middle: Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-1 bg-slate-900/60 p-1 rounded-full border border-slate-800/70">
               {navLinks.map((link) => {
                 const Icon = link.icon;
@@ -138,24 +142,31 @@ export default function Navbar() {
               })}
             </nav>
 
-            {/* Spacious Search Spotlight Trigger (Mobile & Desktop) */}
-            <div className="flex items-center">
+            {/* Right: Live Clock/Weather Widget + Search Spotlight + Language Selector */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Live Clock & Zero-Permission Weather */}
+              <HeaderStatusWidget />
+
+              {/* Search Trigger */}
               <button
                 onClick={() => setIsCommandOpen(true)}
-                className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs transition-all active:scale-95 w-auto sm:w-56 md:w-64 shadow-sm group"
+                className="flex items-center justify-between gap-3 px-3 py-1.5 sm:py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs transition-all active:scale-95 w-auto sm:w-44 md:w-52 shadow-sm group"
                 title="Cari Tool, Prompt, atau Projek (Ctrl+K / Cmd+K)"
               >
                 <div className="flex items-center gap-2">
                   <Search className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
-                  <span className="hidden sm:inline text-slate-400 group-hover:text-slate-200">
-                    Cari cepat...
+                  <span className="hidden sm:inline text-slate-400 group-hover:text-slate-200 text-xs">
+                    {t("nav.search_placeholder")}
                   </span>
-                  <span className="sm:hidden font-medium text-slate-300">Cari</span>
+                  <span className="sm:hidden font-medium text-slate-300 text-xs">{t("nav.search")}</span>
                 </div>
                 <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono bg-slate-800/90 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700">
                   ⌘K
                 </kbd>
               </button>
+
+              {/* Multi-Language Dropdown Selector */}
+              <LanguageSelector />
             </div>
           </div>
         </header>
