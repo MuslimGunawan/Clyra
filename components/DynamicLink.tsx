@@ -1,40 +1,33 @@
 "use client";
 
 import React, { MouseEvent } from "react";
-import { usePageTransition } from "./PageTransitionProvider";
+import Link from "next/link";
 
 interface DynamicLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   href: string;
   children: React.ReactNode;
   className?: string;
-  useEphemeral?: boolean;
 }
 
 export default function DynamicLink({
   href,
   children,
   className,
-  useEphemeral = true,
   onClick,
   ...props
 }: DynamicLinkProps) {
-  const { navigateTo } = usePageTransition();
-
-  const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
-    if (onClick) onClick(e);
-
-    // If external link or anchor hash, proceed normally
-    if (href.startsWith("http") || href.startsWith("#") || href.startsWith("mailto:")) {
-      return;
-    }
-
-    e.preventDefault();
-    navigateTo(href);
-  };
+  // If external link or anchor hash, render standard anchor
+  if (href.startsWith("http") || href.startsWith("#") || href.startsWith("mailto:")) {
+    return (
+      <a href={href} onClick={onClick} className={className} {...props}>
+        {children}
+      </a>
+    );
+  }
 
   return (
-    <a href={href} onClick={handleClick} className={className} {...props}>
+    <Link href={href} onClick={onClick} className={className} {...props}>
       {children}
-    </a>
+    </Link>
   );
 }

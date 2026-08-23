@@ -101,25 +101,16 @@ body {
 @keyframes pageEnter {
   0% {
     opacity: 0;
-    transform: translateY(18px);
-    filter: blur(4px);
+    transform: translateY(12px);
   }
   100% {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
 }
 
 .animate-page-enter {
-  animation: pageEnter 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: opacity, transform, filter;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-page-enter {
-    animation: none !important;
-  }
+  animation: pageEnter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 
