@@ -20,7 +20,17 @@ export function getStoredPrompts(): PromptItem[] {
       localStorage.setItem(PROMPTS_VAULT_KEY, JSON.stringify(PROMPTS));
       return PROMPTS;
     }
-    return JSON.parse(raw);
+    const stored: PromptItem[] = JSON.parse(raw);
+    
+    // Auto-sync: Ensure any new default prompts from data/prompts.ts are automatically added if missing
+    const storedIds = new Set(stored.map((p) => p.id));
+    const missingDefaults = PROMPTS.filter((p) => !storedIds.has(p.id));
+    if (missingDefaults.length > 0) {
+      const merged = [...missingDefaults, ...stored];
+      localStorage.setItem(PROMPTS_VAULT_KEY, JSON.stringify(merged));
+      return merged;
+    }
+    return stored;
   } catch {
     return PROMPTS;
   }
