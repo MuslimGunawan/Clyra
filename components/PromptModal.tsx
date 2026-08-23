@@ -107,7 +107,7 @@ export default function PromptModal({ prompt, onClose }: PromptModalProps) {
               </button>
             </div>
 
-            <div className="p-4 rounded-xl bg-[#08090d] border border-slate-800 text-slate-200 text-sm font-mono leading-relaxed select-all">
+            <div className="p-4 sm:p-5 rounded-xl bg-[#08090d] border border-slate-800 text-slate-200 text-xs sm:text-sm font-mono leading-relaxed select-all whitespace-pre-wrap max-h-96 overflow-y-auto">
               {prompt.prompt}
             </div>
           </div>
