@@ -1,5 +1,5 @@
+import { notFound } from "next/navigation";
 import { verifyEphemeralToken } from "@/lib/cryptoTokens";
-import InvalidTokenPage from "@/app/v/invalid/page";
 import LandingPage from "@/app/page";
 import ToolsDirectoryPage from "@/app/tools/page";
 import PromptsGalleryPage from "@/app/projects/prompts/page";
@@ -16,8 +16,9 @@ export default async function EphemeralTokenGatewayPage({ params }: TokenGateway
   const { token } = await params;
   const verified = verifyEphemeralToken(token);
 
+  // If token is invalid, manipulated, or expired -> Trigger standard 404 Not Found
   if (!verified.valid || !verified.target) {
-    return <InvalidTokenPage />;
+    notFound();
   }
 
   const target = verified.target;
@@ -52,5 +53,6 @@ export default async function EphemeralTokenGatewayPage({ params }: TokenGateway
     return <AdminDashboardPage />;
   }
 
-  return <LandingPage />;
+  // If route is unknown, trigger 404
+  notFound();
 }

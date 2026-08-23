@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { 
   Wrench, 
@@ -37,6 +37,9 @@ export default function Navbar() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Long Press Timer for Mobile Touch Screen
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Reset logo tap counter after 3 seconds
   useEffect(() => {
     if (logoTapCount > 0) {
@@ -52,6 +55,18 @@ export default function Navbar() {
       window.dispatchEvent(new Event("clyra_open_admin_vault"));
     } else {
       setLogoTapCount(nextCount);
+    }
+  };
+
+  const handleTouchStart = () => {
+    longPressTimerRef.current = setTimeout(() => {
+      window.dispatchEvent(new Event("clyra_open_admin_vault"));
+    }, 2000); // Hold for 2 seconds on mobile
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
     }
   };
 
@@ -101,6 +116,9 @@ export default function Navbar() {
             <div className="flex items-center gap-2.5 group shrink-0 select-none">
               <div 
                 onClick={handleLogoTap}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                onTouchCancel={handleTouchEnd}
                 className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-500 p-[1px] shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-all duration-300 cursor-pointer active:scale-95"
                 title="Clyra Workspace"
               >
