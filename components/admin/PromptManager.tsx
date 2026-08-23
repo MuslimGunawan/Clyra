@@ -25,6 +25,7 @@ import {
 } from "@/lib/adminStore";
 import { useToast } from "@/components/ToastProvider";
 import DestructiveConfirmModal from "./DestructiveConfirmModal";
+import DeleteConfirmModal from "./DeleteConfirmModal";
 
 const PROMPT_CATEGORIES = [
   "Photography",
@@ -54,6 +55,7 @@ export default function PromptManager() {
   const [editingPrompt, setEditingPrompt] = useState<PromptItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
   // Thumbnail mode: "upload" or "url"
   const [thumbnailMode, setThumbnailMode] = useState<"url" | "upload">("url");
@@ -110,10 +112,14 @@ export default function PromptManager() {
   };
 
   const handleDelete = (id: string, title: string) => {
-    if (confirm(`Yakin ingin menghapus prompt "${title}"?`)) {
-      deleteStoredPrompt(id);
-      showToast("Prompt berhasil dihapus.", "info");
-    }
+    setDeleteTarget({ id, title });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    deleteStoredPrompt(deleteTarget.id);
+    showToast(`Prompt "${deleteTarget.title}" berhasil dihapus.`, "info");
+    setDeleteTarget(null);
   };
 
   const handleReset = () => {
@@ -538,6 +544,16 @@ export default function PromptManager() {
         title="Reset Default AI Prompts"
         description="Anda akan mengembalikan seluruh database koleksi prompt AI ke data bawaan awal. Seluruh prompt baru yang Anda buat atau modifikasi akan terhapus."
         confirmButtonText="Konfirmasi & Reset Prompts"
+      />
+
+      {/* Custom Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Hapus Prompt AI"
+        itemTitle={deleteTarget?.title}
+        itemType="Prompt"
       />
     </div>
   );

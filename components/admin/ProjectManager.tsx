@@ -22,6 +22,7 @@ import {
 } from "@/lib/adminStore";
 import { useToast } from "@/components/ToastProvider";
 import DestructiveConfirmModal from "./DestructiveConfirmModal";
+import DeleteConfirmModal from "./DeleteConfirmModal";
 
 const PROJECT_CATEGORIES = [
   "Web App",
@@ -39,6 +40,7 @@ export default function ProjectManager() {
   const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
   // Form State
   const [formData, setFormData] = useState<Partial<ProjectItem>>({
@@ -91,10 +93,14 @@ export default function ProjectManager() {
   };
 
   const handleDelete = (id: string, title: string) => {
-    if (confirm(`Yakin ingin menghapus projek "${title}"?`)) {
-      deleteStoredProject(id);
-      showToast("Projek berhasil dihapus.", "info");
-    }
+    setDeleteTarget({ id, title });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    deleteStoredProject(deleteTarget.id);
+    showToast(`Projek "${deleteTarget.title}" berhasil dihapus.`, "info");
+    setDeleteTarget(null);
   };
 
   const handleReset = () => {
@@ -432,6 +438,16 @@ export default function ProjectManager() {
         title="Reset Default Web Works"
         description="Anda akan mengembalikan seluruh database koleksi projek web ke data bawaan awal. Seluruh projek baru yang Anda buat atau modifikasi akan terhapus."
         confirmButtonText="Konfirmasi & Reset Projek"
+      />
+
+      {/* Custom Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Hapus Projek Web"
+        itemTitle={deleteTarget?.title}
+        itemType="Projek Web"
       />
     </div>
   );
