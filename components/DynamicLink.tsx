@@ -1,14 +1,13 @@
 "use client";
 
 import React, { MouseEvent } from "react";
-import { useRouter } from "next/navigation";
-import { createEphemeralToken } from "@/lib/cryptoTokens";
+import { usePageTransition } from "./PageTransitionProvider";
 
 interface DynamicLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   href: string;
   children: React.ReactNode;
   className?: string;
-  useEphemeral?: boolean; // Set true to generate dynamic unique token on each click
+  useEphemeral?: boolean;
 }
 
 export default function DynamicLink({
@@ -19,7 +18,7 @@ export default function DynamicLink({
   onClick,
   ...props
 }: DynamicLinkProps) {
-  const router = useRouter();
+  const { navigateTo } = usePageTransition();
 
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
     if (onClick) onClick(e);
@@ -29,12 +28,8 @@ export default function DynamicLink({
       return;
     }
 
-    if (useEphemeral) {
-      e.preventDefault();
-      // Generate a fresh unique token dynamically on EVERY click
-      const dynamicToken = createEphemeralToken(href);
-      router.push(`/v/${dynamicToken}`);
-    }
+    e.preventDefault();
+    navigateTo(href);
   };
 
   return (
