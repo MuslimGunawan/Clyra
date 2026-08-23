@@ -9,13 +9,16 @@ import {
   Database, 
   LogOut, 
   ArrowLeft, 
-  ShieldCheck 
+  ShieldCheck,
+  Send,
+  GitBranch
 } from "lucide-react";
 import { isAdminAuthenticated, logoutAdmin } from "@/lib/adminAuth";
 import PromptManager from "@/components/admin/PromptManager";
 import ProjectManager from "@/components/admin/ProjectManager";
 import DataBackupRestore from "@/components/admin/DataBackupRestore";
 import AdminLoginModal from "@/components/admin/AdminLoginModal";
+import GitHubPublishModal from "@/components/admin/GitHubPublishModal";
 import DynamicLink from "@/components/DynamicLink";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +27,7 @@ export default function AdminDashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showPublishModal, setShowPublishModal] = useState(false);
   const [activeTab, setActiveTab] = useState<"prompts" | "projects" | "backup">("prompts");
 
   useEffect(() => {
@@ -98,24 +102,35 @@ export default function AdminDashboardPage() {
             <span>Kembali ke Beranda</span>
           </DynamicLink>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-800/40 text-emerald-400 text-[11px] font-mono">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Quick Publish Button */}
+            <button
+              onClick={() => setShowPublishModal(true)}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white border border-indigo-500/40 text-xs font-bold shadow-md shadow-indigo-600/30 transition-all active:scale-95 cursor-pointer"
+              title="Push semua perubahan ke GitHub & Deploy Live"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>🚀 Publish ke GitHub</span>
+            </button>
+
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-800/40 text-emerald-400 text-[11px] font-mono">
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Admin Authorized</span>
             </div>
+
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-red-950/40 border border-slate-800 hover:border-red-800/50 text-slate-400 hover:text-red-300 text-xs transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-red-950/40 border border-slate-800 hover:border-red-800/50 text-slate-400 hover:text-red-300 text-xs transition-colors cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Keluar Sesi</span>
+              <span className="hidden sm:inline">Keluar Sesi</span>
             </button>
           </div>
         </div>
 
         {/* Header Title */}
         <div className="bg-[#0c0e17] border border-slate-800/90 rounded-2xl p-6 sm:p-8 shadow-xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
                 <Lock className="w-6 h-6" />
@@ -134,11 +149,11 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Tabs Selector */}
-            <div className="flex items-center gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800 self-start sm:self-auto">
+            <div className="flex items-center gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800 self-start lg:self-auto overflow-x-auto w-full lg:w-auto">
               <button
                 onClick={() => setActiveTab("prompts")}
                 className={cn(
-                  "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all",
+                  "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium shrink-0 transition-all cursor-pointer",
                   activeTab === "prompts"
                     ? "bg-indigo-600 text-white shadow-sm"
                     : "text-slate-400 hover:text-white"
@@ -151,7 +166,7 @@ export default function AdminDashboardPage() {
               <button
                 onClick={() => setActiveTab("projects")}
                 className={cn(
-                  "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all",
+                  "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium shrink-0 transition-all cursor-pointer",
                   activeTab === "projects"
                     ? "bg-indigo-600 text-white shadow-sm"
                     : "text-slate-400 hover:text-white"
@@ -164,14 +179,14 @@ export default function AdminDashboardPage() {
               <button
                 onClick={() => setActiveTab("backup")}
                 className={cn(
-                  "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all",
+                  "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium shrink-0 transition-all cursor-pointer",
                   activeTab === "backup"
                     ? "bg-indigo-600 text-white shadow-sm"
                     : "text-slate-400 hover:text-white"
                 )}
               >
                 <Database className="w-3.5 h-3.5" />
-                <span>Backup JSON</span>
+                <span>Backup &amp; Sync GitHub</span>
               </button>
             </div>
           </div>
@@ -184,6 +199,12 @@ export default function AdminDashboardPage() {
           {activeTab === "backup" && <DataBackupRestore />}
         </div>
       </main>
+
+      {/* GitHub Auto-Deploy Modal */}
+      <GitHubPublishModal
+        isOpen={showPublishModal}
+        onClose={() => setShowPublishModal(false)}
+      />
     </div>
   );
 }
