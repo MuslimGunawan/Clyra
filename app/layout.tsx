@@ -9,6 +9,7 @@ import SecurityShield from "@/components/SecurityShield";
 import SecretAdminTrigger from "@/components/SecretAdminTrigger";
 import ChangelogModal from "@/components/ChangelogModal";
 import WorkspaceCustomizer from "@/components/workspace/WorkspaceCustomizer";
+import PageTransitionProvider from "@/components/PageTransitionProvider";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 const geistSans = Geist({
@@ -156,7 +157,7 @@ export default function RootLayout({
             <ChangelogModal />
             <WorkspaceCustomizer />
             <Navbar />
-            <div className="flex-1 flex flex-col">{children}</div>
+            <PageTransitionProvider>{children}</PageTransitionProvider>
             <Footer />
             <TermsGatekeeper />
           </ToastProvider>
