@@ -21,6 +21,7 @@ import {
   resetPromptsToDefault 
 } from "@/lib/adminStore";
 import { useToast } from "@/components/ToastProvider";
+import DestructiveConfirmModal from "./DestructiveConfirmModal";
 
 const PROMPT_CATEGORIES = [
   "3D & Render",
@@ -47,6 +48,7 @@ export default function PromptManager() {
   const [selectedCat, setSelectedCat] = useState("Semua");
   const [editingPrompt, setEditingPrompt] = useState<PromptItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState<Partial<PromptItem>>({
@@ -107,10 +109,12 @@ export default function PromptManager() {
   };
 
   const handleReset = () => {
-    if (confirm("Reset semua prompt ke data default awal?")) {
-      resetPromptsToDefault();
-      showToast("Data prompt telah direset ke default.", "info");
-    }
+    setShowResetModal(true);
+  };
+
+  const handleConfirmReset = () => {
+    resetPromptsToDefault();
+    showToast("Seluruh data prompt berhasil direset ke pengaturan awal pabrik!", "info");
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -391,6 +395,16 @@ export default function PromptManager() {
           </div>
         </div>
       )}
+
+      {/* High Security Destructive Reset Confirmation Modal */}
+      <DestructiveConfirmModal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        onConfirm={handleConfirmReset}
+        title="Reset Default AI Prompts"
+        description="Anda akan mengembalikan seluruh database koleksi prompt AI ke data bawaan awal. Seluruh prompt baru yang Anda buat atau modifikasi akan terhapus."
+        confirmButtonText="Konfirmasi & Reset Prompts"
+      />
     </div>
   );
 }

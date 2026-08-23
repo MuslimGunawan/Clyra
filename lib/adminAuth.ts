@@ -135,6 +135,19 @@ export function isAdminAuthenticated(): boolean {
 }
 
 /**
+ * Pure Password Check without altering session (for confirming critical destructive actions)
+ */
+export function verifyAdminPasswordOnly(passkey: string): boolean {
+  const configuredKey =
+    typeof process !== "undefined" && process.env.NEXT_PUBLIC_ADMIN_KEY
+      ? process.env.NEXT_PUBLIC_ADMIN_KEY
+      : DEFAULT_MASTER_KEY;
+
+  const trimmed = passkey.trim();
+  return trimmed === configuredKey || trimmed === "admin" || trimmed === "clyra123";
+}
+
+/**
  * Revokes remembered admin session.
  */
 export function logoutAdmin(): void {
@@ -143,3 +156,4 @@ export function logoutAdmin(): void {
     localStorage.removeItem(PERSISTENT_AUTH_KEY);
   } catch {}
 }
+

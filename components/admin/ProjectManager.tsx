@@ -21,6 +21,7 @@ import {
   resetProjectsToDefault 
 } from "@/lib/adminStore";
 import { useToast } from "@/components/ToastProvider";
+import DestructiveConfirmModal from "./DestructiveConfirmModal";
 
 const PROJECT_CATEGORIES = [
   "Web App",
@@ -37,8 +38,9 @@ export default function ProjectManager() {
   const [selectedCat, setSelectedCat] = useState("Semua");
   const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
 
-  // Form state
+  // Form State
   const [formData, setFormData] = useState<Partial<ProjectItem>>({
     title: "",
     description: "",
@@ -96,10 +98,13 @@ export default function ProjectManager() {
   };
 
   const handleReset = () => {
-    if (confirm("Reset semua projek ke data default awal?")) {
-      resetProjectsToDefault();
-      showToast("Data projek telah direset ke default.", "info");
-    }
+    setShowResetModal(true);
+  };
+
+  const handleConfirmReset = () => {
+    resetProjectsToDefault();
+    showToast("Seluruh data projek web berhasil direset ke pengaturan awal pabrik!", "info");
+    setShowResetModal(false);
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -418,6 +423,16 @@ export default function ProjectManager() {
           </div>
         </div>
       )}
+
+      {/* High Security Destructive Reset Confirmation Modal */}
+      <DestructiveConfirmModal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        onConfirm={handleConfirmReset}
+        title="Reset Default Web Works"
+        description="Anda akan mengembalikan seluruh database koleksi projek web ke data bawaan awal. Seluruh projek baru yang Anda buat atau modifikasi akan terhapus."
+        confirmButtonText="Konfirmasi & Reset Projek"
+      />
     </div>
   );
 }
