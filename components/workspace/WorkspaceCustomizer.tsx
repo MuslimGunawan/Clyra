@@ -23,10 +23,48 @@ import {
   Zap,
   Globe,
   HelpCircle,
-  ShieldCheck
+  ShieldCheck,
+  AlertTriangle,
+  Flame,
+  Sword
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ToastProvider";
+
+// Strict Security Sanitizer for Custom Cursor URLs
+const sanitizeCursorUrl = (url: string): string | null => {
+  if (!url) return null;
+  const trimmed = url.trim();
+
+  // 1. Block dangerous pseudo-protocols and scripts
+  const lower = trimmed.toLowerCase();
+  if (
+    lower.startsWith("javascript:") ||
+    lower.startsWith("vbscript:") ||
+    lower.startsWith("data:text") ||
+    lower.startsWith("data:application") ||
+    lower.includes("<script") ||
+    lower.includes("onload=") ||
+    lower.includes("onerror=")
+  ) {
+    return null;
+  }
+
+  // 2. Check for CSS breakout characters (quotes, parens, semicolons, backslashes, line breaks)
+  if (/['"();\\<>\n\r]/.test(trimmed)) {
+    return null;
+  }
+
+  // 3. Only allow valid HTTPS/HTTP image URLs or verified image data-URIs
+  const isHttpsOrHttp = /^https?:\/\/[a-zA-Z0-9-._~:/?#[\]@!$&*+,;=%]+$/i.test(trimmed);
+  const isSafeDataImage = /^data:image\/(png|svg\+xml|x-icon|vnd\.microsoft\.icon|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/i.test(trimmed);
+
+  if (!isHttpsOrHttp && !isSafeDataImage) {
+    return null;
+  }
+
+  return trimmed;
+};
 
 // Predefined Crisp SVG Cursor Data URIs
 const CURSOR_PRESETS = [
@@ -53,6 +91,14 @@ const CURSOR_PRESETS = [
     preview: "✛",
     cursorCss: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%2310b981" stroke-width="2"><circle cx="12" cy="12" r="7"/><line x1="12" y1="2" x2="12" y2="7"/><line x1="12" y1="17" x2="12" y2="22"/><line x1="2" y1="12" x2="7" y2="12"/><line x1="17" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="1.5" fill="%2310b981"/></svg>') 12 12, crosshair`,
     pointerCss: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" fill="%2310b981" stroke="%23ffffff" stroke-width="1.5"><circle cx="14" cy="14" r="8" fill="none"/><circle cx="14" cy="14" r="3"/><line x1="14" y1="2" x2="14" y2="8"/><line x1="14" y1="20" x2="14" y2="26"/><line x1="2" y1="14" x2="8" y2="14"/><line x1="20" y1="14" x2="26" y2="14"/></svg>') 14 14, pointer`,
+  },
+  {
+    id: "katana_blade",
+    name: "Cyber Sword Katana",
+    desc: "Pedang samurai digital menyala tajam",
+    preview: "🗡️",
+    cursorCss: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="%2338bdf8" stroke="%23ffffff" stroke-width="1.5"><path d="m14.5 17.5 3 3 4-4-3-3-4 4Z"/><path d="m2 22 5-5"/><path d="M8.5 8.5 19 3l-5.5 10.5-5-5Z"/></svg>') 4 20, auto`,
+    pointerCss: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" fill="%23f43f5e" stroke="%23ffffff" stroke-width="1.5"><path d="M14 2 4 12l10 10 10-10L14 2Z"/></svg>') 14 14, pointer`,
   },
   {
     id: "magic_sparkle",
@@ -192,7 +238,7 @@ export default function WorkspaceCustomizer() {
   };
 
   // Play Pleasant Web Audio Synthesizer Click Sound
-  const playClickSound = (freq = 600, duration = 0.04) => {
+  const playClickSound = (freq = 600, duration = 0.035) => {
     if (!soundEnabled) return;
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -200,7 +246,7 @@ export default function WorkspaceCustomizer() {
       const gain = ctx.createGain();
       osc.type = "sine";
       osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
       osc.connect(gain);
       gain.connect(ctx.destination);
@@ -211,15 +257,42 @@ export default function WorkspaceCustomizer() {
     }
   };
 
-  // Apply Cursor to Document Body
+  // Global Click Sound Listener for Entire Website
+  useEffect(() => {
+    if (!soundEnabled) return;
+
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      // Check if target or its ancestor is an interactive element
+      const interactiveEl = target.closest(
+        "button, a, input[type='button'], input[type='submit'], [role='button'], select, summary, .cursor-pointer"
+      );
+      if (interactiveEl) {
+        playClickSound(650, 0.03);
+      }
+    };
+
+    document.addEventListener("click", handleGlobalClick, { capture: true });
+    return () => document.removeEventListener("click", handleGlobalClick, { capture: true });
+  }, [soundEnabled]);
+
+  // Apply Cursor to Document Body with Security Sanitization
   useEffect(() => {
     const selectedPreset = CURSOR_PRESETS.find((c) => c.id === cursorId);
     let finalCursor = selectedPreset ? selectedPreset.cursorCss : "auto";
     let finalPointer = selectedPreset ? selectedPreset.pointerCss : "pointer";
 
-    if (cursorId === "custom_url" && customCursorUrl.trim()) {
-      finalCursor = `url('${customCursorUrl.trim()}'), auto`;
-      finalPointer = `url('${customCursorUrl.trim()}'), pointer`;
+    if (cursorId === "custom_url") {
+      const sanitized = sanitizeCursorUrl(customCursorUrl);
+      if (sanitized) {
+        finalCursor = `url('${sanitized}'), auto`;
+        finalPointer = `url('${sanitized}'), pointer`;
+      } else {
+        finalCursor = "auto";
+        finalPointer = "pointer";
+      }
     }
 
     // Inject dynamic global style for cursor
@@ -297,7 +370,7 @@ export default function WorkspaceCustomizer() {
         <button
           onClick={() => {
             setIsOpen(!isOpen);
-            playClickSound(750, 0.05);
+            playClickSound(750, 0.04);
           }}
           className={cn(
             "flex items-center gap-2 pl-3 pr-2.5 py-3 rounded-l-2xl bg-gradient-to-l from-indigo-600 via-indigo-700 to-purple-800 text-white font-bold text-xs shadow-2xl shadow-indigo-600/50 hover:pl-4 transition-all duration-300 border-l border-y border-indigo-400/40 cursor-pointer group active:scale-95",
@@ -320,7 +393,7 @@ export default function WorkspaceCustomizer() {
           className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fadeIn"
           onClick={() => {
             setIsOpen(false);
-            playClickSound(500, 0.04);
+            playClickSound(500, 0.03);
           }}
         >
           <div
@@ -336,7 +409,7 @@ export default function WorkspaceCustomizer() {
                 <div>
                   <h3 className="text-sm font-bold text-white">Kelola Workspace Anda</h3>
                   <p className="text-[11px] text-slate-400 font-mono">
-                    Kustomisasi Kursor, Warna Tema &amp; Suara Efek
+                    Kustomisasi Kursor, Warna Tema &amp; Audio SFX
                   </p>
                 </div>
               </div>
@@ -344,7 +417,7 @@ export default function WorkspaceCustomizer() {
               <button
                 onClick={() => {
                   setIsOpen(false);
-                  playClickSound(500, 0.04);
+                  playClickSound(500, 0.03);
                 }}
                 className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-colors cursor-pointer"
                 title="Tutup Panel"
@@ -400,7 +473,7 @@ export default function WorkspaceCustomizer() {
                 )}
               >
                 <Sliders className="w-3.5 h-3.5" />
-                <span>Audio &amp; FX</span>
+                <span>Audio &amp; SFX</span>
               </button>
             </div>
 
@@ -428,7 +501,7 @@ export default function WorkspaceCustomizer() {
                           onClick={() => {
                             setCursorId(cur.id);
                             savePrefs({ cursorId: cur.id });
-                            playClickSound(700, 0.04);
+                            playClickSound(700, 0.03);
                             showToast(`Kursor diubah ke "${cur.name}"`, "info");
                           }}
                           className={cn(
@@ -469,16 +542,20 @@ export default function WorkspaceCustomizer() {
                     })}
                   </div>
 
-                  {/* Custom URL Option */}
+                  {/* Custom URL Option with Security Shield */}
                   <div className="p-4 bg-[#08090d] border border-slate-800 rounded-2xl space-y-2 mt-4">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-white flex items-center gap-1.5">
                         <Globe className="w-3.5 h-3.5 text-indigo-400" />
                         Gunakan URL Gambar Kursor Kustom
                       </span>
+                      <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-400">
+                        <ShieldCheck className="w-3 h-3" />
+                        Sanitasi Aman
+                      </span>
                     </div>
                     <p className="text-[10px] text-slate-400">
-                      Anda bisa menempel URL gambar (.png atau .svg 32x32) dari situs seperti <strong className="text-indigo-300">custom-cursor.com</strong>.
+                      Format aman: link langsung HTTPS gambar PNG/SVG (32x32) dari situs seperti <strong className="text-indigo-300">custom-cursor.com</strong>.
                     </p>
                     <div className="flex items-center gap-2 pt-1">
                       <input
@@ -489,21 +566,24 @@ export default function WorkspaceCustomizer() {
                           setCursorId("custom_url");
                           savePrefs({ cursorId: "custom_url", customCursorUrl: e.target.value });
                         }}
-                        placeholder="https://.../cursor.png"
+                        placeholder="https://domain.com/cursor.png"
                         className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:border-indigo-500 outline-none"
                       />
                       <button
                         onClick={() => {
-                          if (customCursorUrl) {
+                          const sanitized = sanitizeCursorUrl(customCursorUrl);
+                          if (sanitized) {
                             setCursorId("custom_url");
-                            savePrefs({ cursorId: "custom_url", customCursorUrl });
+                            savePrefs({ cursorId: "custom_url", customCursorUrl: sanitized });
                             playClickSound(800, 0.04);
-                            showToast("Kursor kustom URL diterapkan!", "success");
+                            showToast("Kursor kustom URL berhasil dipasang!", "success");
+                          } else {
+                            showToast("URL tidak valid atau melanggar aturan keamanan!", "error");
                           }
                         }}
                         className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 cursor-pointer"
                       >
-                        Pasang
+                        Terapkan
                       </button>
                     </div>
                   </div>
@@ -531,7 +611,7 @@ export default function WorkspaceCustomizer() {
                           onClick={() => {
                             setThemeId(th.id);
                             savePrefs({ themeId: th.id });
-                            playClickSound(600, 0.05);
+                            playClickSound(600, 0.04);
                             showToast(`Tema diubah ke "${th.name}"`, "info");
                           }}
                           className={cn(
@@ -582,7 +662,7 @@ export default function WorkspaceCustomizer() {
                 </div>
               )}
 
-              {/* TAB 3: AUDIO SFX & BACKGROUND FX */}
+              {/* TAB 3: AUDIO SFX & GLOBAL FEEDBACK */}
               {activeTab === "fx" && (
                 <div className="space-y-6 animate-fadeIn">
                   {/* UI Audio SFX */}
@@ -593,8 +673,8 @@ export default function WorkspaceCustomizer() {
                           {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
                         </div>
                         <div>
-                          <span className="text-xs font-bold text-white block">Efek Suara Antarmuka (SFX)</span>
-                          <span className="text-[10px] text-slate-400">Audio sintetis halus saat mengklik tombol</span>
+                          <span className="text-xs font-bold text-white block">Efek Suara Global (All Menus SFX)</span>
+                          <span className="text-[10px] text-slate-400">Suara klik aktif di seluruh tombol &amp; menu website</span>
                         </div>
                       </div>
 
@@ -603,7 +683,7 @@ export default function WorkspaceCustomizer() {
                           const nextState = !soundEnabled;
                           setSoundEnabled(nextState);
                           savePrefs({ soundEnabled: nextState });
-                          if (nextState) playClickSound(800, 0.05);
+                          if (nextState) playClickSound(800, 0.04);
                         }}
                         className={cn(
                           "w-11 h-6 rounded-full transition-colors relative cursor-pointer",
@@ -621,7 +701,7 @@ export default function WorkspaceCustomizer() {
 
                     {soundEnabled && (
                       <button
-                        onClick={() => playClickSound(880, 0.06)}
+                        onClick={() => playClickSound(880, 0.04)}
                         className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-indigo-300 text-xs font-mono border border-slate-800 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                       >
                         <Zap className="w-3.5 h-3.5" />
@@ -657,7 +737,7 @@ export default function WorkspaceCustomizer() {
               <button
                 onClick={() => {
                   setIsOpen(false);
-                  playClickSound(500, 0.04);
+                  playClickSound(500, 0.03);
                 }}
                 className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all cursor-pointer"
               >
