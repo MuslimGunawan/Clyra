@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { 
   Palette, 
   MousePointer, 
@@ -237,46 +237,87 @@ export default function WorkspaceCustomizer() {
     }
   };
 
-  // Play Pleasant Web Audio Synthesizer Click Sound
-  const playClickSound = (freq = 600, duration = 0.035) => {
+  // Shared AudioContext Singleton (Prevents browser 6-instance limit and handles autoplay resume)
+  const getAudioContext = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    if (!(window as any)._clyraAudioCtx) {
+      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtxClass) {
+        (window as any)._clyraAudioCtx = new AudioCtxClass();
+      }
+    }
+    const ctx = (window as any)._clyraAudioCtx as AudioContext | undefined;
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+    return ctx || null;
+  }, []);
+
+  // Play Crisp Pleasant Web Audio Synthesizer Click Sound
+  const playClickSound = useCallback((freq = 720, duration = 0.035) => {
     if (!soundEnabled) return;
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const ctx = getAudioContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
+
       osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      gain.gain.setValueAtTime(0.06, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.6, now + duration);
+
+      gain.gain.setValueAtTime(0.09, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
       osc.connect(gain);
       gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + duration);
+
+      osc.start(now);
+      osc.stop(now + duration);
     } catch {
       // ignore audio errors
     }
-  };
+  }, [soundEnabled, getAudioContext]);
 
-  // Global Click Sound Listener for Entire Website
+  // Global PointerDown Sound Listener for Entire Website (Works on every button, link, tab, card, input)
   useEffect(() => {
     if (!soundEnabled) return;
 
-    const handleGlobalClick = (e: MouseEvent) => {
+    const handleGlobalPointerDown = (e: MouseEvent | PointerEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
 
-      // Check if target or its ancestor is an interactive element
-      const interactiveEl = target.closest(
-        "button, a, input[type='button'], input[type='submit'], [role='button'], select, summary, .cursor-pointer"
+      // 1. Direct tag match or role
+      const isDirectInteractive = !!target.closest(
+        "button, a, input, select, textarea, label, [role='button'], [tabindex], .cursor-pointer, [data-clickable]"
       );
-      if (interactiveEl) {
-        playClickSound(650, 0.03);
+
+      // 2. Computed pointer cursor check (handles clickable cards, divs with onClick, svgs, etc.)
+      let hasPointerCursor = false;
+      try {
+        const computed = window.getComputedStyle(target);
+        if (computed.cursor === "pointer") {
+          hasPointerCursor = true;
+        } else if (target.parentElement) {
+          const parentComputed = window.getComputedStyle(target.parentElement);
+          if (parentComputed.cursor === "pointer") {
+            hasPointerCursor = true;
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      if (isDirectInteractive || hasPointerCursor) {
+        playClickSound(750, 0.035);
       }
     };
 
-    document.addEventListener("click", handleGlobalClick, { capture: true });
-    return () => document.removeEventListener("click", handleGlobalClick, { capture: true });
-  }, [soundEnabled]);
+    window.addEventListener("pointerdown", handleGlobalPointerDown, { capture: true, passive: true });
+    return () => window.removeEventListener("pointerdown", handleGlobalPointerDown, { capture: true });
+  }, [soundEnabled, playClickSound]);
 
   // Apply Cursor to Document Body with Security Sanitization
   useEffect(() => {
