@@ -10,7 +10,8 @@ import {
   Layers, 
   Search, 
   X,
-  History
+  History,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CommandPalette from "./CommandPalette";
@@ -75,6 +76,7 @@ export default function Navbar() {
     { href: "/tools", label: t("nav.tools"), icon: Wrench, badge: "11" },
     { href: "/projects/prompts", label: t("nav.prompts"), icon: Sparkles },
     { href: "/projects/web", label: t("nav.web"), icon: FolderGit2 },
+    { href: "/member/workspace", label: "Member Vault", icon: ShieldCheck, badge: "VIP" },
   ];
 
   return (
