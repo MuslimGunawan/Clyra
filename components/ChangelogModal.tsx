@@ -6,19 +6,8 @@ import {
   X, 
   Sparkles, 
   CheckCircle2, 
-  Bug, 
   ShieldCheck, 
   Calendar, 
-  Tag, 
-  ArrowUpRight,
-  Zap,
-  Layers,
-  FileCode2,
-  ExternalLink,
-  Users,
-  Send,
-  Database,
-  Lock,
   Flame,
   Gamepad2
 } from "lucide-react";
@@ -43,39 +32,38 @@ const CHANGELOG_DATA: VersionLog[] = [
     date: "28 Agustus 2026",
     isLatest: true,
     highlights: [
-      "🔥 Ekspansi Besar: Peluncuran Clyra Member Vault & Multi-Device Cloud Workspace untuk Pembeli Produk Digital.",
-      "Integrasi Gateway Webhook Otomatis Lynk.id dengan verifikasi signature Merchant Key 0.5 detik.",
-      "Infrastruktur Cloud Database PostgreSQL (Supabase) dengan enkripsi password PBKDF2 / SHA-256.",
-      "Interactive Ebook Reader & Script Hub terproteksi khusus pembeli dengan 1-Click Copy Code.",
-      "Cloud Notes Pribadi untuk setiap member yang tersinkronisasi otomatis antar-perangkat (Laptop & HP).",
+      "🔥 Ekspansi Besar: Peluncuran Clyra Member Vault & Multi-Device Cloud Workspace untuk akses materi digital eksklusif.",
+      "Sistem Aktivasi Akun Otomatis & Pembuatan Password Mandiri yang instan dan aman.",
+      "Sinkronisasi Cloud Real-time: Akses workspace dan produk Anda dari perangkat mana pun secara mulus.",
+      "Interactive Digital Reader & Source Code Hub dengan 1-Click Code Copier dan Dark Mode nyaman.",
+      "Brankas Catatan Cloud Pribadi (My Notes) untuk menyimpan snippet, prompt, dan catatan penting.",
     ],
     details: [
       {
-        title: "👑 Member Vault & Cloud Workspace (/member)",
+        title: "👑 Member Vault & Cloud Workspace",
         items: [
-          "Halaman Aktivasi Lynk.id (/member/activate) dengan auto-fill & locked email anti-salah.",
-          "Sistem pembuatan password manual mandiri langsung saat pertama kali aktivasi.",
-          "Login Multi-Device (/member/login) untuk akses sinkron dari Laptop (Zen Browser) dan HP (Redmi).",
-          "Interactive Ebook Reader dengan dark mode nyaman dan tombol unduh PDF resmi.",
-          "Script & Source Code Hub lengkap dengan syntax highlighter dan 1-Click Copy.",
-          "Catatan Cloud Pribadi (My Notes) untuk menyimpan prompt, snippet kode, dan API key.",
+          "Halaman Aktivasi Khusus Pembeli dengan verifikasi instan tanpa ribet.",
+          "Sistem pembuatan password mandiri untuk keamanan akun penuh.",
+          "Login Multi-Device: Akses portofolio materi dari laptop, tablet, maupun smartphone.",
+          "Interactive Digital Reader dengan antarmuka baca yang bersih dan opsi unduh dokumen.",
+          "Source Code Hub dengan syntax highlighter elegan dan fitur salin kode 1-klik.",
+          "Penyimpanan Cloud Notes terenkripsi untuk menyimpan catatan pribadi pembeli.",
         ],
       },
       {
-        title: "📡 Lynk.id Webhook Engine (/api/webhook/lynk)",
+        title: "⚡ Instant Order Verification Gateway",
         items: [
-          "Penerima notifikasi pembayaran instan real-time (QRIS, VA, E-Wallet).",
-          "Verifikasi tanda tangan kriptografi Merchant Key untuk mencegah request palsu.",
-          "Otomatisasi pemberian hak akses produk ke database Supabase tanpa intervensi manual.",
+          "Pemrosesan verifikasi transaksi otomatis dalam hitungan detik.",
+          "Pemberian hak akses produk digital secara instan ke akun pembeli.",
+          "Proteksi keamanan berlapis untuk menjaga integritas kepemilikan aset digital.",
         ],
       },
       {
-        title: "👥 Admin Member & Digital Products Hub (/admin)",
+        title: "🛠️ Admin Control Center & Content Management",
         items: [
-          "Sub-tab baru 'Members & Produk' untuk memantau daftar seluruh pembeli terdaftar.",
-          "Fitur 'Beri Akses Manual' untuk memberikan lisensi produk secara instan ke email mana pun.",
-          "Katalog Produk Digital CRUD untuk menambah Ebook, Script, dan Prompt Pack baru.",
-          "Generator Link Lynk.id otomatis siap salin untuk dipasang di toko Lynk.id.",
+          "Pusat pengelolaan pembeli terpadu dan monitoring akses digital.",
+          "Katalog manajemen konten untuk penambahan materi dan script baru.",
+          "Generator tautan aktivasi terproteksi siap pakai.",
         ],
       },
     ],
@@ -85,35 +73,35 @@ const CHANGELOG_DATA: VersionLog[] = [
     tag: "Feature Update",
     date: "23 Agustus 2026",
     highlights: [
-      "🚀 GitHub REST API Auto-Commit & 1-Klik Live Deploy ke Vercel langsung dari Admin Panel.",
-      "Penambahan AI Model 'Nano Banana Pro' dan 'FLUX.1' ke dalam galeri prompt.",
-      "Dual-Mode Thumbnail Selector: Upload file gambar lokal (dengan Base64 live preview) + URL ImgBB.",
-      "Penggantian dialog browser bawaan dengan Custom Dark Glassmorphism Delete Modal.",
-      "Auto-Sync Ledger Kriptografis untuk pembaruan prompt baru tanpa merusak data yang dihapus.",
+      "🚀 Sistem 1-Click Live Global Publish untuk sinkronisasi pembaruan konten ke jaringan cloud seketika.",
+      "Ekspansi Preset AI Prompt baru dengan dukungan berbagai model kecerdasan buatan generasi terbaru.",
+      "Dual-Mode Asset Uploader dengan live visual preview instan.",
+      "Pembaruan antarmuka Obsidian Glassmorphism Modal untuk pengalaman pengguna yang lebih mulus.",
+      "Smart Data Synchronization Ledger untuk menjaga integritas data lokal pengguna.",
     ],
     details: [
       {
-        title: "⚡ Git-Backed Serverless CMS",
+        title: "⚡ Cloud Publishing Engine",
         items: [
-          "Tombol 1-Klik '🚀 Publish ke GitHub' di header Admin Vault untuk auto-deploy ke Vercel.",
-          "Sinkronisasi otomatis file data/prompts.ts dan data/projects.ts via GitHub REST API.",
-          "Otorisasi Master Password Admin berenkripsi tinggi sebelum memicu commit.",
+          "1-Click Publish untuk mendistribusikan pembaruan konten ke seluruh server secara instan.",
+          "Pencatatan riwayat pembaruan yang aman dan terstruktur.",
+          "Otorisasi keamanan tingkat lanjut untuk setiap pembaruan sistem.",
         ],
       },
       {
-        title: "🎨 AI Prompts Studio & Visual Vault",
+        title: "🎨 AI Studio & Prompt Vault Expansion",
         items: [
-          "Penambahan 3 template prompt fotografi fotorealistik candid POV smartphone.",
-          "Pilihan engine model baru: Nano Banana Pro, FLUX.1, Midjourney v6, Claude 3.5 Sonnet.",
-          "Form terpadu (Unified Prompt Textarea) untuk instruksi lengkap beserta aspek negatif.",
+          "Koleksi preset prompt visual fotorealistik dan sinematik resolusi tinggi.",
+          "Pilihan engine model AI mutakhir yang semakin bervariasi.",
+          "Unified Prompt Editor untuk penyusunan instruksi AI yang lebih komprehensif.",
         ],
       },
       {
-        title: "🛡️ Keamanan & Antarmuka Kustom",
+        title: "🛡️ UI Aesthetics & Dynamic Gateway",
         items: [
-          "DeleteConfirmModal custom bergaya obsidian dark menggantikan confirm() bawaan browser.",
-          "Protokol Deleted IDs Ledger di localStorage agar item yang dihapus tidak muncul kembali.",
-          "Pembaruan Whitelist Dynamic Ephemeral URL Gateway (/v/t_...).",
+          "Desain dialog konfirmasi interaktif bertema Dark Glassmorphism.",
+          "Protokol perlindungan preferensi pengguna yang lebih cerdas.",
+          "Optimalisasi sistem navigasi tautan dinamis anti-tamper.",
         ],
       },
     ],
@@ -277,7 +265,7 @@ export default function ChangelogModal() {
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5 font-mono">
-                Catatan komprehensif evolusi sistem, ekspansi fitur, dan update Clyra.
+                Catatan pembaruan, ekspansi fitur, dan peningkatan performa Clyra.
               </p>
             </div>
           </div>
@@ -368,7 +356,7 @@ export default function ChangelogModal() {
         <div className="p-4 bg-[#090b10] border-t border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Hybrid Architecture • 100% Client &amp; Cloud Sync</span>
+            <span>High Performance &amp; Secure Cloud Architecture</span>
           </div>
           <button
             onClick={() => setIsOpen(false)}
