@@ -98,7 +98,7 @@ export default function Navbar() {
                 className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-600/40 hover:bg-indigo-600/70 text-indigo-200 border border-indigo-400/40 text-[10px] font-bold transition-all cursor-pointer shadow-sm active:scale-95"
               >
                 <History className="w-3 h-3 text-indigo-300" />
-                <span>Changelog v2.0.0</span>
+                <span>Changelog v2.5.0</span>
               </button>
             </div>
             <button

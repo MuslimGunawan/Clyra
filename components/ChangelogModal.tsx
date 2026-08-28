@@ -14,7 +14,13 @@ import {
   Zap,
   Layers,
   FileCode2,
-  ExternalLink
+  ExternalLink,
+  Users,
+  Send,
+  Database,
+  Lock,
+  Flame,
+  Gamepad2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -32,10 +38,90 @@ interface VersionLog {
 
 const CHANGELOG_DATA: VersionLog[] = [
   {
+    version: "v2.5.0",
+    tag: "Major Release",
+    date: "28 Agustus 2026",
+    isLatest: true,
+    highlights: [
+      "🔥 Ekspansi Besar: Peluncuran Clyra Member Vault & Multi-Device Cloud Workspace untuk Pembeli Produk Digital.",
+      "Integrasi Gateway Webhook Otomatis Lynk.id dengan verifikasi signature Merchant Key 0.5 detik.",
+      "Infrastruktur Cloud Database PostgreSQL (Supabase) dengan enkripsi password PBKDF2 / SHA-256.",
+      "Interactive Ebook Reader & Script Hub terproteksi khusus pembeli dengan 1-Click Copy Code.",
+      "Cloud Notes Pribadi untuk setiap member yang tersinkronisasi otomatis antar-perangkat (Laptop & HP).",
+    ],
+    details: [
+      {
+        title: "👑 Member Vault & Cloud Workspace (/member)",
+        items: [
+          "Halaman Aktivasi Lynk.id (/member/activate) dengan auto-fill & locked email anti-salah.",
+          "Sistem pembuatan password manual mandiri langsung saat pertama kali aktivasi.",
+          "Login Multi-Device (/member/login) untuk akses sinkron dari Laptop (Zen Browser) dan HP (Redmi).",
+          "Interactive Ebook Reader dengan dark mode nyaman dan tombol unduh PDF resmi.",
+          "Script & Source Code Hub lengkap dengan syntax highlighter dan 1-Click Copy.",
+          "Catatan Cloud Pribadi (My Notes) untuk menyimpan prompt, snippet kode, dan API key.",
+        ],
+      },
+      {
+        title: "📡 Lynk.id Webhook Engine (/api/webhook/lynk)",
+        items: [
+          "Penerima notifikasi pembayaran instan real-time (QRIS, VA, E-Wallet).",
+          "Verifikasi tanda tangan kriptografi Merchant Key untuk mencegah request palsu.",
+          "Otomatisasi pemberian hak akses produk ke database Supabase tanpa intervensi manual.",
+        ],
+      },
+      {
+        title: "👥 Admin Member & Digital Products Hub (/admin)",
+        items: [
+          "Sub-tab baru 'Members & Produk' untuk memantau daftar seluruh pembeli terdaftar.",
+          "Fitur 'Beri Akses Manual' untuk memberikan lisensi produk secara instan ke email mana pun.",
+          "Katalog Produk Digital CRUD untuk menambah Ebook, Script, dan Prompt Pack baru.",
+          "Generator Link Lynk.id otomatis siap salin untuk dipasang di toko Lynk.id.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v2.2.0",
+    tag: "Feature Update",
+    date: "23 Agustus 2026",
+    highlights: [
+      "🚀 GitHub REST API Auto-Commit & 1-Klik Live Deploy ke Vercel langsung dari Admin Panel.",
+      "Penambahan AI Model 'Nano Banana Pro' dan 'FLUX.1' ke dalam galeri prompt.",
+      "Dual-Mode Thumbnail Selector: Upload file gambar lokal (dengan Base64 live preview) + URL ImgBB.",
+      "Penggantian dialog browser bawaan dengan Custom Dark Glassmorphism Delete Modal.",
+      "Auto-Sync Ledger Kriptografis untuk pembaruan prompt baru tanpa merusak data yang dihapus.",
+    ],
+    details: [
+      {
+        title: "⚡ Git-Backed Serverless CMS",
+        items: [
+          "Tombol 1-Klik '🚀 Publish ke GitHub' di header Admin Vault untuk auto-deploy ke Vercel.",
+          "Sinkronisasi otomatis file data/prompts.ts dan data/projects.ts via GitHub REST API.",
+          "Otorisasi Master Password Admin berenkripsi tinggi sebelum memicu commit.",
+        ],
+      },
+      {
+        title: "🎨 AI Prompts Studio & Visual Vault",
+        items: [
+          "Penambahan 3 template prompt fotografi fotorealistik candid POV smartphone.",
+          "Pilihan engine model baru: Nano Banana Pro, FLUX.1, Midjourney v6, Claude 3.5 Sonnet.",
+          "Form terpadu (Unified Prompt Textarea) untuk instruksi lengkap beserta aspek negatif.",
+        ],
+      },
+      {
+        title: "🛡️ Keamanan & Antarmuka Kustom",
+        items: [
+          "DeleteConfirmModal custom bergaya obsidian dark menggantikan confirm() bawaan browser.",
+          "Protokol Deleted IDs Ledger di localStorage agar item yang dihapus tidak muncul kembali.",
+          "Pembaruan Whitelist Dynamic Ephemeral URL Gateway (/v/t_...).",
+        ],
+      },
+    ],
+  },
+  {
     version: "v2.0.0",
     tag: "Major Release",
     date: "23 Agustus 2026",
-    isLatest: true,
     highlights: [
       "Overhaul penuh 6 studio besar: Markdown Studio, SVG Studio, Hash & Password Studio, Color Studio, QR Code Studio, dan JSON Formatter.",
       "Integrasi Mesin Cetak PDF A4 Murni untuk Markdown tanpa elemen UI website.",
@@ -141,42 +227,6 @@ const CHANGELOG_DATA: VersionLog[] = [
     ],
   },
   {
-    version: "v1.2.0",
-    tag: "Optimization",
-    date: "22 Agustus 2026",
-    highlights: [
-      "Image Compressor & Optimizer dengan algoritma Multi-Pass Auto-Downscale.",
-    ],
-    details: [
-      {
-        title: "⚡ Image Compressor & Optimizer",
-        items: [
-          "Mode target ukuran KB presisi dengan Multi-Pass Dimension Downscaling.",
-          "Banner panduan otomatis PNG (lossless) vs WebP (lossy) saat ukuran file membesar.",
-          "Slider resolusi, kompresi kualitas, dan filter visual langsung.",
-        ],
-      },
-    ],
-  },
-  {
-    version: "v1.1.0",
-    tag: "Optimization",
-    date: "21 Agustus 2026",
-    highlights: [
-      "Arsitektur keamanan 100% Client-Side dan perlindungan privasi anonim.",
-    ],
-    details: [
-      {
-        title: "🛡️ Privasi & Kinerja",
-        items: [
-          "Semua komputasi dan manipulasi berkas berjalan 100% di browser tanpa upload.",
-          "Sanitasi SVG dan input teks untuk proteksi anti-XSS tingkat tinggi.",
-          "Penerapan Dark Minimalist Aesthetics dengan Tailwind CSS modern.",
-        ],
-      },
-    ],
-  },
-  {
     version: "v1.0.0",
     tag: "Initial Release",
     date: "20 Agustus 2026",
@@ -208,26 +258,26 @@ export default function ChangelogModal() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-fadeIn">
       <div 
-        className="bg-[#0e111a] border border-slate-800 rounded-3xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-scaleUp"
+        className="bg-[#0e111a] border border-indigo-500/40 rounded-3xl w-full max-w-3xl max-h-[88vh] flex flex-col shadow-2xl shadow-indigo-950/60 overflow-hidden animate-scaleUp"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-slate-800 flex items-center justify-between bg-[#090b10]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shadow-md">
-              <History className="w-5 h-5" />
+            <div className="w-11 h-11 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <Gamepad2 className="w-6 h-6 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white">Changelog &amp; Riwayat Pembaruan</h3>
-                <span className="px-2 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-mono font-bold">
-                  v2.0.0 Live
+                <h3 className="text-base font-bold text-white">Changelog &amp; Patch Notes</h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-mono font-bold text-[10px] shadow-sm">
+                  v2.5.0 Live Patch
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5 font-mono">
-                Catatan komprehensif evolusi fitur, perbaikan, dan peningkatan Clyra.
+                Catatan komprehensif evolusi sistem, ekspansi fitur, dan update Clyra.
               </p>
             </div>
           </div>
@@ -260,8 +310,9 @@ export default function ChangelogModal() {
                     {log.tag}
                   </span>
                   {log.isLatest && (
-                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold">
-                      Versi Terbaru
+                    <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-indigo-600/30 to-purple-600/30 text-indigo-300 border border-indigo-500/40 text-[10px] font-bold flex items-center gap-1">
+                      <Flame className="w-3 h-3 text-amber-400" />
+                      Patch Terbaru
                     </span>
                   )}
                 </div>
@@ -276,7 +327,7 @@ export default function ChangelogModal() {
               <div className="bg-[#08090d] border border-slate-800/90 rounded-2xl p-4 space-y-2">
                 <div className="text-[11px] font-mono font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Sorotan Pembaruan:</span>
+                  <span>Sorotan Pembaruan Patch:</span>
                 </div>
                 <ul className="space-y-1.5 text-xs text-slate-300">
                   {log.highlights.map((h, i) => (
@@ -293,10 +344,12 @@ export default function ChangelogModal() {
                 {log.details.map((det, dIdx) => (
                   <div
                     key={dIdx}
-                    className="p-3.5 bg-slate-900/40 border border-slate-800/80 rounded-xl space-y-2 text-xs"
+                    className="p-4 bg-slate-900/40 border border-slate-800/80 rounded-2xl space-y-2 text-xs"
                   >
-                    <div className="font-bold text-white text-xs">{det.title}</div>
-                    <ul className="space-y-1 text-[11px] text-slate-400">
+                    <div className="font-bold text-white text-xs flex items-center gap-2">
+                      <span>{det.title}</span>
+                    </div>
+                    <ul className="space-y-1.5 text-[11px] text-slate-400">
                       {det.items.map((item, itIdx) => (
                         <li key={itIdx} className="flex items-start gap-1.5">
                           <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
@@ -315,13 +368,13 @@ export default function ChangelogModal() {
         <div className="p-4 bg-[#090b10] border-t border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>100% Client-Side Architecture</span>
+            <span>Hybrid Architecture • 100% Client &amp; Cloud Sync</span>
           </div>
           <button
             onClick={() => setIsOpen(false)}
-            className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all cursor-pointer text-xs"
+            className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all cursor-pointer text-xs shadow-md shadow-indigo-600/30"
           >
-            Tutup
+            Tutup Patch Notes
           </button>
         </div>
       </div>
