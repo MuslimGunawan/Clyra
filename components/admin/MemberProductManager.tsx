@@ -232,7 +232,7 @@ export default function MemberProductManager() {
   return (
     <div className="space-y-6">
       {/* Top Header Card */}
-      <div className="bg-[#0c0e17] border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+      <div className="bg-[#0c0e18] border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center">
@@ -251,7 +251,7 @@ export default function MemberProductManager() {
             <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
               <button
                 onClick={() => setSubTab("members")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
                   subTab === "members" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -260,7 +260,7 @@ export default function MemberProductManager() {
               </button>
               <button
                 onClick={() => setSubTab("products")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
                   subTab === "products" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -271,12 +271,45 @@ export default function MemberProductManager() {
 
             <button
               onClick={fetchData}
-              className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800"
+              className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 cursor-pointer"
               title="Refresh Data"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
             </button>
           </div>
+        </div>
+
+        {/* Master Credentials & Quick Preview Box (Only visible in Secret Admin Panel) */}
+        <div className="pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-950/70 p-4 rounded-xl border border-purple-950/60">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-purple-400" />
+              <span className="text-xs font-bold text-white">Kredensial Master Admin (Semua Halaman):</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+              <span className="text-slate-400">Email/Username:</span>
+              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-purple-300 font-bold select-all">admin</span>
+              <span className="text-slate-600">•</span>
+              <span className="text-slate-400">Password:</span>
+              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-emerald-400 font-bold select-all">clyra123</span>
+            </div>
+          </div>
+
+          <a
+            href="/member/workspace"
+            onClick={(e) => {
+              e.preventDefault();
+              const token = Math.random().toString(36).substring(2);
+              localStorage.setItem("clyra_member_token", `admin_master_session_${token}`);
+              localStorage.setItem("clyra_member_email", "admin@clyra.internal");
+              localStorage.setItem("clyra_member_name", "Master Administrator");
+              window.location.href = "/member/workspace";
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-600/30 transition-all active:scale-95 cursor-pointer whitespace-nowrap self-stretch sm:self-auto justify-center"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>👑 Preview Member Workspace</span>
+          </a>
         </div>
       </div>
 

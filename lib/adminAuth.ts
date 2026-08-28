@@ -3,7 +3,7 @@
  * Provides single-role admin authentication, persistent device remembered sessions (7 days), and anti-bruteforce lockouts.
  */
 
-const DEFAULT_MASTER_KEY = "clyra_admin_2026";
+const DEFAULT_MASTER_KEY = "clyra123";
 const PERSISTENT_AUTH_KEY = "clyra_admin_auth_vault_v1";
 const LOCKOUT_KEY = "cly_adm_lockout";
 const MAX_ATTEMPTS = 5;
@@ -70,7 +70,7 @@ export function authenticateAdmin(passkey: string): { success: boolean; error?: 
       ? process.env.NEXT_PUBLIC_ADMIN_KEY
       : DEFAULT_MASTER_KEY;
 
-  if (passkey.trim() === configuredKey || passkey.trim() === "admin" || passkey.trim() === "clyra123") {
+  if (passkey.trim() === configuredKey || passkey.trim() === DEFAULT_MASTER_KEY) {
     // Reset lockout counter on success
     saveLockoutState({ attempts: 0, lockedUntil: 0 });
 
@@ -144,7 +144,7 @@ export function verifyAdminPasswordOnly(passkey: string): boolean {
       : DEFAULT_MASTER_KEY;
 
   const trimmed = passkey.trim();
-  return trimmed === configuredKey || trimmed === "admin" || trimmed === "clyra123";
+  return trimmed === configuredKey || trimmed === DEFAULT_MASTER_KEY;
 }
 
 /**
@@ -156,4 +156,3 @@ export function logoutAdmin(): void {
     localStorage.removeItem(PERSISTENT_AUTH_KEY);
   } catch {}
 }
-

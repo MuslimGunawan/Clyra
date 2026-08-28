@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
 import { verifyPassword, generateMemberSessionToken, ADMIN_MASTER_EMAIL } from "@/lib/memberAuth";
 
-const DEFAULT_ADMIN_KEY = "clyra_admin_2026";
+const DEFAULT_ADMIN_KEY = "clyra123";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,12 +19,10 @@ export async function POST(req: NextRequest) {
     const cleanEmail = email.toLowerCase().trim();
     const trimmedPass = String(password).trim();
 
-    // 1. ADMIN MASTER OVERRIDE CHECK
+    // 1. ADMIN MASTER CHECK (Single password: clyra123)
     const configuredAdminKey = process.env.NEXT_PUBLIC_ADMIN_KEY || DEFAULT_ADMIN_KEY;
     const isMasterAdminPassword =
       trimmedPass === configuredAdminKey ||
-      trimmedPass === "admin" ||
-      trimmedPass === "clyra123" ||
       trimmedPass === DEFAULT_ADMIN_KEY;
 
     if (isMasterAdminPassword && (cleanEmail === "admin" || cleanEmail === ADMIN_MASTER_EMAIL || cleanEmail.includes("admin"))) {
@@ -53,23 +51,6 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error || !member) {
-      // If admin password was entered with any regular email, also grant master preview
-      if (isMasterAdminPassword) {
-        const token = generateMemberSessionToken(ADMIN_MASTER_EMAIL, "admin");
-        return NextResponse.json({
-          success: true,
-          message: "Login Administrator Berhasil! Semua produk telah di-unlock.",
-          token,
-          isAdmin: true,
-          member: {
-            id: "admin-root-001",
-            email: ADMIN_MASTER_EMAIL,
-            fullName: "Master Administrator",
-            role: "admin",
-          },
-        });
-      }
-
       return NextResponse.json(
         { success: false, error: "Email tidak terdaftar atau belum diaktivasi." },
         { status: 401 }
@@ -78,23 +59,6 @@ export async function POST(req: NextRequest) {
 
     const isMatch = await verifyPassword(password, member.password_hash);
     if (!isMatch) {
-      // Check if admin master key fallback was provided
-      if (isMasterAdminPassword) {
-        const token = generateMemberSessionToken(ADMIN_MASTER_EMAIL, "admin");
-        return NextResponse.json({
-          success: true,
-          message: "Master Admin Override aktif! Membuka semua produk...",
-          token,
-          isAdmin: true,
-          member: {
-            id: "admin-root-001",
-            email: ADMIN_MASTER_EMAIL,
-            fullName: "Master Administrator",
-            role: "admin",
-          },
-        });
-      }
-
       return NextResponse.json(
         { success: false, error: "Password yang Anda masukkan salah." },
         { status: 401 }
