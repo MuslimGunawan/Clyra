@@ -1,12 +1,12 @@
+"use client";
+
 import DynamicLink from "@/components/DynamicLink";
 import { Scale, ArrowLeft, ShieldAlert, ShieldCheck, FileText, CheckCircle2 } from "lucide-react";
-
-export const metadata = {
-  title: "Syarat & Ketentuan Penggunaan (Disclaimer) — Clyra",
-  description: "Pelepasan tanggung jawab hukum, ketentuan penggunaan personal, dan kebijakan privasi platform Clyra.",
-};
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function TermsPage() {
+  const { t } = useLanguage();
+
   return (
     <div className="min-h-screen bg-[#08090d] text-slate-100 flex flex-col">
       <div className="fixed inset-0 bg-radial-gradient pointer-events-none" />
@@ -20,7 +20,7 @@ export default function TermsPage() {
             className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-indigo-400 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Kembali ke Halaman Utama</span>
+            <span>{t("terms.back_home")}</span>
           </DynamicLink>
         </div>
 
@@ -28,13 +28,13 @@ export default function TermsPage() {
         <div className="bg-[#0e111a] border border-slate-800/90 rounded-2xl p-6 sm:p-8 mb-8 shadow-xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-mono">
             <Scale className="w-3.5 h-3.5" />
-            <span>Legal Disclaimer &amp; Terms of Service</span>
+            <span>{t("terms.page_badge")}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            Syarat, Ketentuan &amp; Pelepasan Tanggung Jawab Hukum
+            {t("terms.page_title")}
           </h1>
           <p className="text-xs text-slate-400">
-            Terakhir diperbarui: 19 Agustus 2026 • Berlaku untuk seluruh pengunjung &amp; pengguna platform Clyra.
+            {t("terms.page_desc")}
           </p>
         </div>
 
@@ -49,7 +49,7 @@ export default function TermsPage() {
               Platform <strong>Clyra</strong> adalah website personal workspace, arsip portofolio karya, dan utilitas produktivitas yang disediakan secara independen untuk keperluan <strong>pribadi, edukasi, eksperimen teknis, dan produktivitas harian</strong>.
             </p>
             <p>
-              Seluruh alat (tools) disediakan secara gratis dan bebas digunakan tanpa jaminan komersial apa pun.
+              Seluruh alat (tools) disediakan secara bebas digunakan tanpa jaminan komersial apa pun.
             </p>
           </section>
 
@@ -64,7 +64,7 @@ export default function TermsPage() {
                 <span>Pernyataan Bebas Tuntutan (Zero Liability):</span>
               </div>
               <p>
-                Pemilik, pengembang, dan pengelola platform Clyra <strong>TIDAK BERTANGGUNG JAWAB</strong> atas segala bentuk kerugian, kerusakan data, tuntutan hukum, denda, atau konsekuensi hukum apa pun yang timbul akibat penggunaan atau penyalahgunaan alat bantu, converter, generator, media downloader, atau materi apa pun yang tersedia di situs ini oleh pengguna maupun pihak ketiga.
+                Pemilik, pengembang, dan pengelola platform Clyra <strong>TIDAK BERTANGGUNG JAWAB</strong> atas segala bentuk kerugian, kerusakan data, tuntutan hukum, denda, atau konsekuensi hukum apa pun yang timbul akibat penggunaan atau penyalahgunaan alat bantu, converter, generator, atau materi apa pun yang tersedia di situs ini oleh pengguna maupun pihak ketiga.
               </p>
             </div>
             <p>
@@ -82,10 +82,10 @@ export default function TermsPage() {
             </p>
             <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-400">
               <li>
-                Pengguna bertanggung jawab penuh secara mandiri atas keabsahan, hak cipta, dan legalitas materi, teks, gambar, atau media yang diproses atau diunduh menggunakan tools Clyra.
+                Pengguna bertanggung jawab penuh secara mandiri atas keabsahan, hak cipta, dan legalitas materi, teks, gambar, atau media yang diproses menggunakan tools Clyra.
               </li>
               <li>
-                Pengguna dilarang menggunakan tools Clyra untuk tujuan yang melanggar hukum, melanggar hak cipta / hak kekayaan intelektual (HAKI) pihak lain, atau tindakan yang merugikan orang lain.
+                Pengguna dilarang menggunakan tools Clyra untuk tujuan yang melanggar hukum, melanggar hak cipta / hak kekayaan intelektual pihak lain, atau tindakan yang merugikan orang lain.
               </li>
               <li>
                 Setiap pelanggaran hukum atau hak cipta yang dilakukan oleh pengguna merupakan tanggung jawab pribadi pengguna sepenuhnya di hadapan hukum yang berlaku.
@@ -96,12 +96,12 @@ export default function TermsPage() {
           {/* Section 4 */}
           <section className="space-y-3">
             <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 pb-2 border-b border-slate-800">
-              <span className="text-indigo-400 font-mono">4.</span> Privasi &amp; Pemrosesan Data di Sisi Klien (Client-Side Only)
+              <span className="text-indigo-400 font-mono">4.</span> {t("terms.client_side_rule")}
             </h2>
             <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-950/20 border border-emerald-900/40 text-emerald-300 text-xs">
               <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-400 mt-0.5" />
               <div className="leading-relaxed">
-                Platform Clyra dibangun dengan arsitektur <strong>100% Client-Side Processing</strong>. Artinya, file gambar, teks, JSON, password, maupun prompt Anda diproses langsung di dalam browser perangkat Anda tanpa pernah diunggah, disimpan, atau dicatat di server basis data pihak pengelola.
+                {t("terms.client_side_desc")}
               </div>
             </div>
           </section>

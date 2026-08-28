@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, Copy, Check, Sparkles, Tag, Sliders, ExternalLink } from "lucide-react";
 import { PromptItem } from "@/lib/types";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface PromptModalProps {
   prompt: PromptItem | null;
@@ -10,6 +11,7 @@ interface PromptModalProps {
 }
 
 export default function PromptModal({ prompt, onClose }: PromptModalProps) {
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
   const [copiedNeg, setCopiedNeg] = useState(false);
 
@@ -45,7 +47,7 @@ export default function PromptModal({ prompt, onClose }: PromptModalProps) {
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 p-2 rounded-full bg-slate-900/80 text-slate-400 hover:text-white border border-slate-700/60 transition-colors"
+          className="absolute top-4 right-4 z-20 p-2 rounded-full bg-slate-900/80 text-slate-400 hover:text-white border border-slate-700/60 transition-colors cursor-pointer"
           aria-label="Tutup"
         >
           <X className="w-4 h-4" />
@@ -87,21 +89,21 @@ export default function PromptModal({ prompt, onClose }: PromptModalProps) {
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                Prompt Command
+                <span>Prompt Command</span>
               </span>
               <button
                 onClick={handleCopyPrompt}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
               >
                 {copied ? (
                   <>
                     <Check className="w-3.5 h-3.5 text-emerald-300" />
-                    <span>Tersalin!</span>
+                    <span>{t("prompts.copied")}</span>
                   </>
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    <span>Salin Prompt</span>
+                    <span>{t("prompts.copy_prompt")}</span>
                   </>
                 )}
               </button>
@@ -117,21 +119,21 @@ export default function PromptModal({ prompt, onClose }: PromptModalProps) {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  Negative Prompt (Opsi)
+                  {t("prompts.negative_prompt")}
                 </span>
                 <button
                   onClick={handleCopyNegative}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors cursor-pointer"
                 >
                   {copiedNeg ? (
                     <>
                       <Check className="w-3 h-3 text-emerald-400" />
-                      <span>Tersalin</span>
+                      <span>{t("prompts.copied")}</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-3 h-3" />
-                      <span>Salin</span>
+                      <span>{t("prompts.copy_prompt")}</span>
                     </>
                   )}
                 </button>
@@ -148,12 +150,12 @@ export default function PromptModal({ prompt, onClose }: PromptModalProps) {
               <div className="space-y-1.5">
                 <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
                   <Sliders className="w-3.5 h-3.5 text-slate-500" />
-                  Parameters
+                  <span>Parameters</span>
                 </span>
                 <div className="flex flex-wrap gap-2 text-xs font-mono text-slate-300">
                   {prompt.parameters.aspectRatio && (
                     <span className="bg-slate-900 px-2 py-1 rounded border border-slate-800">
-                      Aspect Ratio: {prompt.parameters.aspectRatio}
+                      {t("prompts.aspect_ratio")}: {prompt.parameters.aspectRatio}
                     </span>
                   )}
                   {prompt.parameters.stylize && (
@@ -173,7 +175,7 @@ export default function PromptModal({ prompt, onClose }: PromptModalProps) {
             <div className="space-y-1.5">
               <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-slate-500" />
-                Tags
+                <span>Tags</span>
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {prompt.tags.map((tag) => (

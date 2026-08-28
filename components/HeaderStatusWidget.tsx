@@ -19,6 +19,7 @@ import {
   ChevronDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface WeatherFullData {
   temp: string;
@@ -34,6 +35,7 @@ interface WeatherFullData {
 }
 
 export default function HeaderStatusWidget() {
+  const { t, language } = useLanguage();
   const [timeStr, setTimeStr] = useState<string>("");
   const [dateStr, setDateStr] = useState<string>("");
   const [weather, setWeather] = useState<WeatherFullData | null>(null);
@@ -54,8 +56,15 @@ export default function HeaderStatusWidget() {
       const seconds = String(now.getSeconds()).padStart(2, "0");
       setTimeStr(`${hours}:${minutes}:${seconds}`);
 
+      const localeMap: Record<string, string> = {
+        id: "id-ID",
+        en: "en-US",
+        zh: "zh-CN",
+        ar: "ar-SA",
+      };
+
       setDateStr(
-        now.toLocaleDateString("id-ID", {
+        now.toLocaleDateString(localeMap[language] || "id-ID", {
           weekday: "long",
           day: "numeric",
           month: "short",
@@ -67,7 +76,7 @@ export default function HeaderStatusWidget() {
     updateClock();
     const timer = setInterval(updateClock, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [language]);
 
   // 2. Outside Click & Escape Key Listener to Close Dropdown
   useEffect(() => {
@@ -204,7 +213,7 @@ export default function HeaderStatusWidget() {
             ? "bg-indigo-950/80 border-indigo-500/60 text-white shadow-indigo-950/50"
             : "bg-slate-900/70 hover:bg-slate-800/90 border-slate-800/80 hover:border-indigo-500/40 text-slate-300"
         )}
-        title="Klik untuk melihat detail cuaca, zona waktu &amp; lokasi"
+        title={t("weather.title")}
       >
         {/* Live Digital Clock */}
         <div className="flex items-center gap-1.5 text-slate-200">
@@ -249,7 +258,7 @@ export default function HeaderStatusWidget() {
                 <CloudSun className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-white">Status Cuaca &amp; Waktu</h4>
+                <h4 className="text-xs font-bold text-white">{t("weather.title")}</h4>
                 <p className="text-[10px] text-slate-400 font-mono">{dateStr}</p>
               </div>
             </div>
@@ -267,7 +276,7 @@ export default function HeaderStatusWidget() {
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-[9px] font-mono uppercase font-bold text-amber-400 tracking-wider">
-                  Kondisi Cuaca
+                  {t("weather.condition")}
                 </span>
                 <div className="text-sm font-bold text-white">{weather?.condition || "Cerah Berawan"}</div>
               </div>
@@ -284,7 +293,7 @@ export default function HeaderStatusWidget() {
               <div className="p-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-center">
                 <div className="text-slate-500 text-[9px] flex items-center justify-center gap-1">
                   <Droplets className="w-2.5 h-2.5 text-cyan-400" />
-                  <span>Lembab</span>
+                  <span>{t("weather.humidity")}</span>
                 </div>
                 <div className="font-mono font-bold text-white mt-0.5">{weather?.humidity || "78%"}</div>
               </div>
@@ -292,7 +301,7 @@ export default function HeaderStatusWidget() {
               <div className="p-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-center">
                 <div className="text-slate-500 text-[9px] flex items-center justify-center gap-1">
                   <Wind className="w-2.5 h-2.5 text-teal-400" />
-                  <span>Angin</span>
+                  <span>{t("weather.wind")}</span>
                 </div>
                 <div className="font-mono font-bold text-white mt-0.5">{weather?.windSpeed || "12 km/h"}</div>
               </div>
@@ -300,7 +309,7 @@ export default function HeaderStatusWidget() {
               <div className="p-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-center">
                 <div className="text-slate-500 text-[9px] flex items-center justify-center gap-1">
                   <Sun className="w-2.5 h-2.5 text-amber-400" />
-                  <span>UV Index</span>
+                  <span>{t("weather.uv")}</span>
                 </div>
                 <div className="font-mono font-bold text-white mt-0.5">{weather?.uvIndex || "Low"}</div>
               </div>
@@ -335,7 +344,7 @@ export default function HeaderStatusWidget() {
                 type="text"
                 value={customCityInput}
                 onChange={(e) => setCustomCityInput(e.target.value)}
-                placeholder="Ganti kota (e.g. Jakarta, Surabaya)..."
+                placeholder={t("weather.search_placeholder")}
                 className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 rounded-lg pl-7 pr-2.5 py-1.5 text-white placeholder:text-slate-500 outline-none text-[11px]"
               />
             </div>
@@ -344,7 +353,7 @@ export default function HeaderStatusWidget() {
               disabled={isLoadingWeather}
               className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] cursor-pointer disabled:opacity-50"
             >
-              Cari
+              {t("weather.search_btn")}
             </button>
           </form>
 
@@ -357,7 +366,7 @@ export default function HeaderStatusWidget() {
               className="flex items-center gap-1 text-slate-400 hover:text-indigo-300 transition-colors cursor-pointer"
             >
               <LocateFixed className="w-3 h-3 text-indigo-400" />
-              <span>Gunakan GPS Presisi</span>
+              <span>{t("weather.use_gps")}</span>
             </button>
 
             <button
@@ -367,7 +376,7 @@ export default function HeaderStatusWidget() {
               className="flex items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
             >
               <RefreshCw className={`w-3 h-3 ${isLoadingWeather ? "animate-spin" : ""}`} />
-              <span>Reset</span>
+              <span>{t("weather.reset")}</span>
             </button>
           </div>
         </div>

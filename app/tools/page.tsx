@@ -20,11 +20,13 @@ import {
   togglePinTool, 
   getRecentTools 
 } from "@/lib/toolUsage";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import Link from "next/link";
 
 type SortMode = "usage" | "popular" | "alpha";
 
 export default function ToolsDirectoryPage() {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sortMode, setSortMode] = useState<SortMode>("usage");
@@ -83,13 +85,13 @@ export default function ToolsDirectoryPage() {
         <div className="max-w-3xl mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-mono mb-4">
             <Wrench className="w-3.5 h-3.5" />
-            <span>Tools Hub &amp; Smart Analytics</span>
+            <span>{t("tools.page_badge")}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
-            Pusat Utilitas &amp; Tools Produktivitas
+            {t("tools.page_title")}
           </h1>
           <p className="mt-2 text-sm sm:text-base text-slate-400 leading-relaxed">
-            Urutan tools disesuaikan secara otomatis berdasarkan frekuensi penggunaan harian Anda. 100% Client-side safe tanpa server delay.
+            {t("tools.page_desc")}
           </p>
         </div>
 
@@ -101,7 +103,7 @@ export default function ToolsDirectoryPage() {
               <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
                 <span className="text-xs font-mono text-amber-400 flex items-center gap-1 shrink-0">
                   <Star className="w-3.5 h-3.5 fill-amber-400" />
-                  <span>Favorit:</span>
+                  <span>{t("tools.pinned_title")}:</span>
                 </span>
                 <div className="flex items-center gap-1.5">
                   {pinnedToolsList.map((tool) => (
@@ -122,7 +124,7 @@ export default function ToolsDirectoryPage() {
               <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
                 <span className="text-xs font-mono text-slate-400 flex items-center gap-1 shrink-0">
                   <History className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Terakhir:</span>
+                  <span>{t("tools.recent_title")}:</span>
                 </span>
                 <div className="flex items-center gap-1.5">
                   {recentToolsList.slice(0, 3).map((tool) => (
@@ -150,7 +152,7 @@ export default function ToolsDirectoryPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari tool (e.g. compress, qr, hash)..."
+                placeholder={t("tools.search_placeholder")}
                 className="w-full bg-[#08090d] border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
               />
             </div>
@@ -159,16 +161,16 @@ export default function ToolsDirectoryPage() {
             <div className="flex items-center gap-2 self-start md:self-auto">
               <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
                 <ArrowUpDown className="w-3 h-3 text-indigo-400" />
-                <span>Urutan:</span>
+                <span>Sort:</span>
               </span>
               <select
                 value={sortMode}
                 onChange={(e) => setSortMode(e.target.value as SortMode)}
                 className="bg-[#08090d] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-medium"
               >
-                <option value="usage">🔥 Paling Sering Digunakan</option>
-                <option value="popular">✨ Default Rekomendasi</option>
-                <option value="alpha">🔤 Nama (A - Z)</option>
+                <option value="usage">🔥 {t("tools.sort_usage")}</option>
+                <option value="popular">✨ {t("tools.sort_popular")}</option>
+                <option value="alpha">🔤 {t("tools.sort_alpha")}</option>
               </select>
             </div>
           </div>
@@ -185,7 +187,7 @@ export default function ToolsDirectoryPage() {
                     : "bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800"
                 }`}
               >
-                {category.label}
+                {category.id === "all" ? t("tools.filter_all") : category.label}
               </button>
             ))}
           </div>
@@ -207,16 +209,16 @@ export default function ToolsDirectoryPage() {
         ) : (
           <div className="p-12 text-center bg-[#0e111a] border border-slate-800/80 rounded-2xl">
             <p className="text-slate-400 text-sm">
-              Tidak ada tool yang cocok dengan pencarian &quot;{searchQuery}&quot;.
+              {t("tools.no_results")}
             </p>
             <button
               onClick={() => {
                 setSearchQuery("");
                 setSelectedCategory("all");
               }}
-              className="mt-3 text-xs text-indigo-400 hover:underline"
+              className="mt-3 text-xs text-indigo-400 hover:underline cursor-pointer"
             >
-              Reset filter
+              {t("tools.reset_filter")}
             </button>
           </div>
         )}

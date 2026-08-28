@@ -17,6 +17,7 @@ import { PROMPTS } from "@/data/prompts";
 import { PROJECTS } from "@/data/projects";
 import { IconHelper } from "./IconHelper";
 import { createEphemeralToken } from "@/lib/cryptoTokens";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ interface CommandPaletteProps {
 }
 
 export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
+  const { t } = useLanguage();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const router = useRouter();
@@ -154,13 +156,13 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
               setSelectedIndex(0);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Cari tool, prompt, atau projek (e.g. image, password, cyber)..."
+            placeholder={t("palette.placeholder")}
             className="w-full bg-transparent py-3.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
           />
           {query && (
             <button
               onClick={() => setQuery("")}
-              className="p-1 rounded-md text-slate-400 hover:text-white"
+              className="p-1 rounded-md text-slate-400 hover:text-white cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -211,7 +213,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
             })
           ) : (
             <div className="p-8 text-center text-xs text-slate-500">
-              Tidak ada hasil untuk &quot;{query}&quot;.
+              {t("palette.no_results")}
             </div>
           )}
         </div>
@@ -219,9 +221,9 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         {/* Footer shortcuts */}
         <div className="px-4 py-2 bg-[#08090d] border-t border-slate-800 flex items-center justify-between text-[11px] font-mono text-slate-500">
           <div className="flex items-center gap-3">
-            <span>↑↓ Navigasi</span>
-            <span>↵ Buka</span>
-            <span>ESC Tutup</span>
+            <span>↑↓ {t("nav.search")}</span>
+            <span>↵ Enter</span>
+            <span>ESC Close</span>
           </div>
           <span>Clyra Spotlight</span>
         </div>

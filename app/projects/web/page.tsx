@@ -9,8 +9,10 @@ import { PROJECTS, PROJECT_CATEGORIES } from "@/data/projects";
 import { ProjectItem } from "@/lib/types";
 import ProjectCard from "@/components/ProjectCard";
 import { getStoredProjects } from "@/lib/adminStore";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function WebProjectsPage() {
+  const { t } = useLanguage();
   const [projectsList, setProjectsList] = useState<ProjectItem[]>(PROJECTS);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("Semua Projek");
@@ -54,13 +56,13 @@ export default function WebProjectsPage() {
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-mono mb-4">
               <FolderGit2 className="w-3.5 h-3.5" />
-              <span>Web Portfolio &amp; Works</span>
+              <span>{t("web.page_badge")}</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
-              Koleksi Website &amp; Projek Web
+              {t("web.page_title")}
             </h1>
             <p className="mt-2 text-sm sm:text-base text-slate-400 leading-relaxed">
-              Dokumentasi dan etalase karya website, aplikasi, dan eksperimen web yang pernah dibuat, lengkap dengan live demo link dan informasi tech stack.
+              {t("web.page_desc")}
             </p>
           </div>
         </div>
@@ -101,17 +103,24 @@ export default function WebProjectsPage() {
         {/* Projects Grid */}
         {filteredProjects.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+            {filteredProjects.map((item) => (
+              <ProjectCard key={item.id} item={item} />
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 bg-slate-900/20 border border-slate-800/60 rounded-3xl p-8">
-            <FolderGit2 className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-            <h3 className="text-base font-semibold text-slate-300">Tidak ada projek yang cocok</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Coba gunakan kata kunci pencarian lain atau pilih kategori Semua.
+          <div className="p-12 text-center bg-[#0e111a] border border-slate-800/80 rounded-2xl">
+            <p className="text-slate-400 text-sm">
+              Tidak ada projek yang cocok dengan filter atau pencarian Anda.
             </p>
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedCategory("Semua Projek");
+              }}
+              className="mt-3 text-xs text-indigo-400 hover:underline cursor-pointer"
+            >
+              Reset filter
+            </button>
           </div>
         )}
       </main>

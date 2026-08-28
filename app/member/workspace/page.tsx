@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import DynamicLink from "@/components/DynamicLink";
 import { useToast } from "@/components/ToastProvider";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface Product {
   id: string;
@@ -61,6 +62,7 @@ interface MemberProfile {
 export default function MemberWorkspacePage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { t } = useLanguage();
 
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -208,7 +210,7 @@ export default function MemberWorkspacePage() {
                 C
               </div>
               <span className="text-base font-extrabold text-white tracking-wider">
-                CLYRA <span className="text-indigo-400 font-mono text-xs">MEMBER VAULT</span>
+                CLYRA <span className="text-indigo-400 font-mono text-xs">{t("member.vault_badge")}</span>
               </span>
             </DynamicLink>
 
@@ -226,10 +228,10 @@ export default function MemberWorkspacePage() {
             <button
               onClick={handleLogout}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-red-950/40 border border-slate-800 hover:border-red-800/50 text-slate-400 hover:text-red-300 text-xs transition-colors cursor-pointer"
-              title="Keluar Sesi"
+              title={t("member.logout")}
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Keluar</span>
+              <span className="hidden sm:inline">{t("member.logout")}</span>
             </button>
           </div>
         </div>
@@ -243,17 +245,17 @@ export default function MemberWorkspacePage() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/60">
-                  Workspace Pembeli
+                  {t("member.workspace_title")}
                 </span>
                 <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Multi-Device Sync
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                Halo, {profile?.full_name || "Member"}!
+                {profile?.full_name || "Member"}
               </h1>
               <p className="text-xs sm:text-sm text-slate-400 max-w-xl leading-relaxed">
-                Seluruh produk digital, ebook, source code, dan catatan yang Anda miliki tersimpan aman di cloud dan dapat Anda akses kapan saja dari HP maupun Laptop.
+                {t("member.workspace_desc")}
               </p>
             </div>
 
@@ -264,7 +266,7 @@ export default function MemberWorkspacePage() {
               </div>
               <div>
                 <div className="text-lg font-bold text-white font-mono">{products.length}</div>
-                <div className="text-[10px] text-slate-400 font-mono">Produk Dimiliki</div>
+                <div className="text-[10px] text-slate-400 font-mono">{t("member.my_products")}</div>
               </div>
             </div>
           </div>
@@ -280,7 +282,7 @@ export default function MemberWorkspacePage() {
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span>Produk Saya ({products.length})</span>
+              <span>{t("member.my_products")} ({products.length})</span>
             </button>
 
             <button
@@ -292,7 +294,7 @@ export default function MemberWorkspacePage() {
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
-              <span>Catatan Cloud ({notes.length})</span>
+              <span>{t("member.notes_title")} ({notes.length})</span>
             </button>
           </div>
         </div>

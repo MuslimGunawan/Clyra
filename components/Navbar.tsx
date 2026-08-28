@@ -76,7 +76,7 @@ export default function Navbar() {
     { href: "/tools", label: t("nav.tools"), icon: Wrench, badge: "11" },
     { href: "/projects/prompts", label: t("nav.prompts"), icon: Sparkles },
     { href: "/projects/web", label: t("nav.web"), icon: FolderGit2 },
-    { href: "/member/workspace", label: "Member Vault", icon: ShieldCheck, badge: "VIP" },
+    { href: "/member/workspace", label: t("nav.member_vault"), icon: ShieldCheck, badge: "VIP" },
   ];
 
   return (
@@ -88,17 +88,17 @@ export default function Navbar() {
           <div className="bg-gradient-to-r from-indigo-950/90 via-purple-950/70 to-indigo-950/90 border-b border-indigo-500/30 px-4 py-1.5 text-[11px] text-indigo-200 flex items-center justify-between gap-3 font-mono">
             <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-2 text-center sm:text-left justify-center flex-1">
               <span className="px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 font-bold border border-indigo-500/40 text-[10px]">
-                Clyra Hub (Early Access)
+                {t("banner.early_access")}
               </span>
               <span className="text-slate-300 hidden sm:inline">
-                Suite Utilitas Produktivitas &amp; Developer 100% Client-Side
+                {t("banner.subtitle")}
               </span>
               <button
                 onClick={() => window.dispatchEvent(new Event("clyra_open_changelog"))}
                 className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-600/40 hover:bg-indigo-600/70 text-indigo-200 border border-indigo-400/40 text-[10px] font-bold transition-all cursor-pointer shadow-sm active:scale-95"
               >
                 <History className="w-3 h-3 text-indigo-300" />
-                <span>Changelog v2.5.0</span>
+                <span>{t("banner.changelog_btn")}</span>
               </button>
             </div>
             <button
