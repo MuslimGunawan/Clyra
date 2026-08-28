@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Clock, 
   CloudSun, 
@@ -15,7 +15,8 @@ import {
   Search, 
   RefreshCw,
   Info,
-  Calendar
+  Calendar,
+  ChevronDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,9 +38,11 @@ export default function HeaderStatusWidget() {
   const [dateStr, setDateStr] = useState<string>("");
   const [weather, setWeather] = useState<WeatherFullData | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [customCityInput, setCustomCityInput] = useState("");
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // 1. Live Real-time Clock & Date
   useEffect(() => {
@@ -55,7 +58,7 @@ export default function HeaderStatusWidget() {
         now.toLocaleDateString("id-ID", {
           weekday: "long",
           day: "numeric",
-          month: "long",
+          month: "short",
           year: "numeric",
         })
       );
@@ -66,7 +69,29 @@ export default function HeaderStatusWidget() {
     return () => clearInterval(timer);
   }, []);
 
-  // 2. Fetch Weather Data (Cached & Overridable)
+  // 2. Outside Click & Escape Key Listener to Close Dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  // 3. Fetch Weather Data (Cached & Overridable)
   const fetchWeather = async (targetQuery?: string, isGps = false) => {
     setIsLoadingWeather(true);
     try {
@@ -168,13 +193,18 @@ export default function HeaderStatusWidget() {
   }
 
   return (
-    <>
+    <div ref={containerRef} className="relative hidden lg:block">
       {/* Clickable Header Status Pill */}
       <button
         type="button"
-        onClick={() => setIsModalOpen(true)}
-        className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/70 hover:bg-slate-800/90 border border-slate-800/80 hover:border-indigo-500/50 text-[11px] font-mono text-slate-300 shadow-sm backdrop-blur-sm select-none cursor-pointer transition-all active:scale-95 group"
-        title="Klik untuk detail cuaca, zona waktu &amp; lokasi"
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-mono shadow-sm backdrop-blur-sm select-none cursor-pointer transition-all active:scale-95 group border",
+          isOpen
+            ? "bg-indigo-950/80 border-indigo-500/60 text-white shadow-indigo-950/50"
+            : "bg-slate-900/70 hover:bg-slate-800/90 border-slate-800/80 hover:border-indigo-500/40 text-slate-300"
+        )}
+        title="Klik untuk melihat detail cuaca, zona waktu &amp; lokasi"
       >
         {/* Live Digital Clock */}
         <div className="flex items-center gap-1.5 text-slate-200">
@@ -198,171 +228,150 @@ export default function HeaderStatusWidget() {
                 <MapPin className="w-3 h-3 text-indigo-400" />
               )}
               {weather.city && (
-                <span className="truncate max-w-[85px] text-slate-400 group-hover:text-white">
+                <span className="truncate max-w-[80px] text-slate-400 group-hover:text-white">
                   {weather.city}
                 </span>
               )}
             </div>
           </>
         )}
+
+        <ChevronDown className={cn("w-3 h-3 text-slate-500 transition-transform duration-200", isOpen && "rotate-180 text-indigo-400")} />
       </button>
 
-      {/* DETAIL MODAL */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-          <div className="fixed inset-0" onClick={() => setIsModalOpen(false)} />
-
-          <div className="relative w-full max-w-md bg-[#0c0e18] border border-slate-800 rounded-3xl p-6 shadow-2xl shadow-indigo-950/40 space-y-5 z-10 text-xs">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
-                  <CloudSun className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Status Lingkungan &amp; Cuaca</h3>
-                  <p className="text-[11px] text-slate-400 font-mono">Real-time Environmental Telemetry</p>
-                </div>
+      {/* COMPACT NATIVE DROPDOWN FLYOUT (Underneath the Pill) */}
+      {isOpen && (
+        <div className="absolute top-full right-0 mt-2.5 w-80 sm:w-92 bg-[#0c0e18]/95 backdrop-blur-2xl border border-slate-800/90 rounded-2xl p-4 shadow-2xl shadow-black/90 space-y-3.5 z-50 animate-scaleUp text-xs">
+          {/* Header Row */}
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                <CloudSun className="w-4 h-4" />
               </div>
-
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div>
+                <h4 className="text-xs font-bold text-white">Status Cuaca &amp; Waktu</h4>
+                <p className="text-[10px] text-slate-400 font-mono">{dateStr}</p>
+              </div>
             </div>
 
-            {/* Time & Date Card */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/90 space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-indigo-400 font-mono text-[11px]">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>WAKTU LOKAL</span>
-                </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
-                  {Intl.DateTimeFormat().resolvedOptions().timeZone || "WIB"}
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Main Weather Card */}
+          <div className="p-3.5 rounded-xl bg-gradient-to-br from-indigo-950/40 via-slate-950 to-slate-950 border border-indigo-900/30 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[9px] font-mono uppercase font-bold text-amber-400 tracking-wider">
+                  Kondisi Cuaca
                 </span>
+                <div className="text-sm font-bold text-white">{weather?.condition || "Cerah Berawan"}</div>
               </div>
-              <div className="text-2xl font-bold font-mono text-white tracking-wider">{timeStr}</div>
-              <div className="text-xs text-slate-400 flex items-center gap-1.5 pt-0.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                <span>{dateStr}</span>
-              </div>
-            </div>
-
-            {/* Weather Metrics Card */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950/40 via-slate-950 to-slate-950 border border-indigo-900/40 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] font-mono text-amber-400 uppercase font-bold tracking-wider">
-                    Kondisi Atmosfer
-                  </div>
-                  <div className="text-xl font-bold text-white mt-0.5">{weather?.condition || "Cerah Berawan"}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-extrabold text-amber-300 font-mono">{weather?.temp || "--°C"}</div>
-                  {weather?.feelsLike && (
-                    <div className="text-[10px] text-slate-400 font-mono">Terasa seperti {weather.feelsLike}</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Weather Stats Grid */}
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/80 text-[11px]">
-                <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800">
-                  <div className="text-slate-500 flex items-center gap-1 text-[10px]">
-                    <Droplets className="w-3 h-3 text-cyan-400" />
-                    <span>Kelembaban</span>
-                  </div>
-                  <div className="font-mono font-bold text-white mt-0.5">{weather?.humidity || "78%"}</div>
-                </div>
-
-                <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800">
-                  <div className="text-slate-500 flex items-center gap-1 text-[10px]">
-                    <Wind className="w-3 h-3 text-teal-400" />
-                    <span>Kecepatan Angin</span>
-                  </div>
-                  <div className="font-mono font-bold text-white mt-0.5">{weather?.windSpeed || "12 km/h"}</div>
-                </div>
-
-                <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800">
-                  <div className="text-slate-500 flex items-center gap-1 text-[10px]">
-                    <Sun className="w-3 h-3 text-amber-400" />
-                    <span>Indeks UV</span>
-                  </div>
-                  <div className="font-mono font-bold text-white mt-0.5">{weather?.uvIndex || "Low"}</div>
-                </div>
+              <div className="text-right">
+                <div className="text-2xl font-extrabold text-amber-300 font-mono">{weather?.temp || "--°C"}</div>
+                {weather?.feelsLike && (
+                  <div className="text-[10px] text-slate-400 font-mono">Terasa {weather.feelsLike}</div>
+                )}
               </div>
             </div>
 
-            {/* Location & Node Explanation */}
-            <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between text-[11px]">
-                <div className="flex items-center gap-1.5 text-indigo-300 font-bold">
-                  <MapPin className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Lokasi Terdeteksi: {weather?.city} {weather?.region ? `(${weather.region})` : ""}</span>
+            {/* Micro Stats Grid */}
+            <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800/80 text-[10px]">
+              <div className="p-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-center">
+                <div className="text-slate-500 text-[9px] flex items-center justify-center gap-1">
+                  <Droplets className="w-2.5 h-2.5 text-cyan-400" />
+                  <span>Lembab</span>
                 </div>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/60">
-                  {weather?.sourceType === "gps" ? "GPS" : weather?.sourceType === "custom" ? "Manual" : "ISP Gateway"}
-                </span>
+                <div className="font-mono font-bold text-white mt-0.5">{weather?.humidity || "78%"}</div>
               </div>
 
-              <div className="flex items-start gap-2 p-2 rounded-xl bg-slate-900/80 text-[11px] text-slate-400 leading-relaxed">
-                <Info className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                <p>
-                  Nama <strong>&quot;{weather?.city}&quot;</strong> berasal dari simpul stasiun jaringan / IP gateway provider internet Anda secara otomatis (privasi aman tanpa melacak GPS asli).
-                </p>
-              </div>
-            </div>
-
-            {/* Action Buttons: Set Manual City or Precise GPS */}
-            <div className="space-y-2.5 pt-1">
-              <form onSubmit={handleCustomCitySubmit} className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="text"
-                    value={customCityInput}
-                    onChange={(e) => setCustomCityInput(e.target.value)}
-                    placeholder="Ketik kota Anda (e.g. Jakarta, Bandung, Surabaya)..."
-                    className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 rounded-xl pl-8 pr-3 py-2 text-white placeholder:text-slate-500 outline-none text-xs"
-                  />
+              <div className="p-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-center">
+                <div className="text-slate-500 text-[9px] flex items-center justify-center gap-1">
+                  <Wind className="w-2.5 h-2.5 text-teal-400" />
+                  <span>Angin</span>
                 </div>
-                <button
-                  type="submit"
-                  disabled={isLoadingWeather}
-                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold cursor-pointer disabled:opacity-50"
-                >
-                  Cari
-                </button>
-              </form>
+                <div className="font-mono font-bold text-white mt-0.5">{weather?.windSpeed || "12 km/h"}</div>
+              </div>
 
-              <div className="flex items-center justify-between gap-2 text-[11px]">
-                <button
-                  type="button"
-                  onClick={handleUseGps}
-                  disabled={isLoadingWeather}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 cursor-pointer"
-                >
-                  <LocateFixed className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Deteksi Presisi (GPS)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => fetchWeather()}
-                  disabled={isLoadingWeather}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 cursor-pointer"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingWeather ? "animate-spin" : ""}`} />
-                  <span>Reset ke ISP</span>
-                </button>
+              <div className="p-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-center">
+                <div className="text-slate-500 text-[9px] flex items-center justify-center gap-1">
+                  <Sun className="w-2.5 h-2.5 text-amber-400" />
+                  <span>UV Index</span>
+                </div>
+                <div className="font-mono font-bold text-white mt-0.5">{weather?.uvIndex || "Low"}</div>
               </div>
             </div>
           </div>
+
+          {/* Location Info Banner */}
+          <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/90 space-y-1.5">
+            <div className="flex items-center justify-between text-[10px]">
+              <div className="flex items-center gap-1.5 text-indigo-300 font-bold">
+                <MapPin className="w-3 h-3 text-indigo-400 shrink-0" />
+                <span className="truncate max-w-[180px]">{weather?.city} {weather?.region ? `(${weather.region})` : ""}</span>
+              </div>
+              <span className="px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/60 font-mono text-[9px]">
+                {weather?.sourceType === "gps" ? "GPS" : weather?.sourceType === "custom" ? "Manual" : "ISP IP"}
+              </span>
+            </div>
+
+            <div className="flex items-start gap-1.5 text-[10px] text-slate-400 leading-relaxed">
+              <Info className="w-3 h-3 text-indigo-400 shrink-0 mt-0.5" />
+              <p>
+                Lokasi terdeteksi otomatis dari stasiun/IP gateway provider internet Anda (aman tanpa pelacakan GPS).
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Search City Form */}
+          <form onSubmit={handleCustomCitySubmit} className="flex gap-1.5 pt-0.5">
+            <div className="relative flex-1">
+              <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                value={customCityInput}
+                onChange={(e) => setCustomCityInput(e.target.value)}
+                placeholder="Ganti kota (e.g. Jakarta, Surabaya)..."
+                className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 rounded-lg pl-7 pr-2.5 py-1.5 text-white placeholder:text-slate-500 outline-none text-[11px]"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoadingWeather}
+              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] cursor-pointer disabled:opacity-50"
+            >
+              Cari
+            </button>
+          </form>
+
+          {/* Secondary Actions */}
+          <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-[10px]">
+            <button
+              type="button"
+              onClick={handleUseGps}
+              disabled={isLoadingWeather}
+              className="flex items-center gap-1 text-slate-400 hover:text-indigo-300 transition-colors cursor-pointer"
+            >
+              <LocateFixed className="w-3 h-3 text-indigo-400" />
+              <span>Gunakan GPS Presisi</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => fetchWeather()}
+              disabled={isLoadingWeather}
+              className="flex items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+            >
+              <RefreshCw className={`w-3 h-3 ${isLoadingWeather ? "animate-spin" : ""}`} />
+              <span>Reset</span>
+            </button>
+          </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
