@@ -7,6 +7,9 @@ import WebProjectsPage from "@/app/projects/web/page";
 import TermsPage from "@/app/terms/page";
 import ToolDetailPage from "@/app/tools/[slug]/page";
 import AdminDashboardPage from "@/app/admin/page";
+import MemberWorkspacePage from "@/app/member/workspace/page";
+import MemberLoginPage from "@/app/member/login/page";
+import MemberActivatePage from "@/app/member/activate/page";
 
 interface TokenGatewayProps {
   params: Promise<{ token: string }>;
@@ -51,6 +54,18 @@ export default async function EphemeralTokenGatewayPage({ params }: TokenGateway
 
   if (target === "/admin") {
     return <AdminDashboardPage />;
+  }
+
+  if (target === "/member/workspace") {
+    return <MemberWorkspacePage />;
+  }
+
+  if (target === "/member/login") {
+    return <MemberLoginPage />;
+  }
+
+  if (target.startsWith("/member/activate")) {
+    return <MemberActivatePage />;
   }
 
   // If route is unknown, trigger 404
