@@ -23,11 +23,14 @@ import {
   Search, 
   ChevronRight,
   RefreshCw,
-  FolderLock
+  FolderLock,
+  Lock,
+  ArrowLeft
 } from "lucide-react";
 import DynamicLink from "@/components/DynamicLink";
 import { useToast } from "@/components/ToastProvider";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { ADMIN_MASTER_EMAIL } from "@/lib/memberAuth";
 
 interface Product {
   id: string;
@@ -57,6 +60,7 @@ interface MemberProfile {
   full_name: string;
   created_at: string;
   last_login_at: string;
+  role?: string;
 }
 
 export default function MemberWorkspacePage() {
@@ -67,8 +71,10 @@ export default function MemberWorkspacePage() {
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"products" | "notes">("products");
+  const [selectedCategory, setSelectedCategory] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Product Viewer Modal State
@@ -97,6 +103,7 @@ export default function MemberWorkspacePage() {
         setProfile(data.member);
         setProducts(data.products || []);
         setNotes(data.notes || []);
+        setIsAdmin(Boolean(data.isAdmin || data.member?.role === "admin" || data.member?.email === ADMIN_MASTER_EMAIL));
       } else {
         localStorage.removeItem("clyra_member_token");
         showToast("Sesi login berakhir. Silakan login kembali.", "info");
@@ -190,11 +197,16 @@ export default function MemberWorkspacePage() {
     );
   }
 
-  const filteredProducts = products.filter(
-    (p) =>
+  const categories = ["Semua", "Ebook", "Script", "Prompt Pack", "Course", "Tool"];
+
+  const filteredProducts = products.filter((p) => {
+    const matchesSearch =
       p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      p.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "Semua" || p.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="min-h-screen bg-[#07090e] text-slate-100 flex flex-col justify-between relative overflow-hidden font-sans selection:bg-indigo-500 selection:text-white">
@@ -214,12 +226,28 @@ export default function MemberWorkspacePage() {
               </span>
             </DynamicLink>
 
-            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-800/50 text-emerald-400 text-[10px] font-mono">
-              ● Cloud Sync Active
-            </span>
+            {isAdmin ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-950/80 border border-purple-700/60 text-purple-300 text-[10px] font-mono font-bold">
+                👑 Master Admin Unlocked
+              </span>
+            ) : (
+              <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-800/50 text-emerald-400 text-[10px] font-mono">
+                ● Cloud Sync Active
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {isAdmin && (
+              <DynamicLink
+                href="/admin"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-900/40 hover:bg-purple-900/70 border border-purple-700/50 text-purple-200 text-xs font-semibold transition-colors"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Admin Vault</span>
+              </DynamicLink>
+            )}
+
             <div className="text-right hidden sm:block">
               <div className="text-xs font-bold text-white">{profile?.full_name || "Member Clyra"}</div>
               <div className="text-[10px] text-slate-400 font-mono">{profile?.email}</div>
@@ -238,7 +266,36 @@ export default function MemberWorkspacePage() {
       </header>
 
       {/* Main Workspace Body */}
-      <main className="relative z-10 flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <main className="relative z-10 flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6">
+        {/* ADMIN MASTER BANNER (If logged in as admin) */}
+        {isAdmin && (
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-950/80 via-indigo-950/90 to-slate-950 border border-purple-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xl shadow-purple-950/20 animate-fadeIn">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
+                <ShieldCheck className="w-5 h-5 text-purple-300" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white">👑 Mode Preview Master Admin Aktif</span>
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-purple-900/80 text-purple-200 border border-purple-700/60 font-bold">
+                    SEMUA TERBUKA (ALL UNLOCKED)
+                  </span>
+                </div>
+                <p className="text-xs text-purple-200/80 mt-0.5 leading-relaxed">
+                  Anda memiliki akses penuh untuk membuka seluruh Ebook Reader, Script Hub, Source Code, dan Catatan Cloud tanpa batasan transaksi.
+                </p>
+              </div>
+            </div>
+
+            <DynamicLink
+              href="/admin"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-600/30 transition-all active:scale-95 whitespace-nowrap self-stretch sm:self-auto justify-center"
+            >
+              <span>⚙️ Kelola di Admin Vault</span>
+            </DynamicLink>
+          </div>
+        )}
+
         {/* Welcome Header */}
         <div className="bg-[#0c0e18] border border-slate-800 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -252,7 +309,7 @@ export default function MemberWorkspacePage() {
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                {profile?.full_name || "Member"}
+                Halo, {profile?.full_name || "Member"}!
               </h1>
               <p className="text-xs sm:text-sm text-slate-400 max-w-xl leading-relaxed">
                 {t("member.workspace_desc")}
@@ -302,16 +359,37 @@ export default function MemberWorkspacePage() {
         {/* TAB 1: MY PRODUCTS */}
         {activeTab === "products" && (
           <div className="space-y-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari dalam koleksi produk Anda..."
-                className="w-full bg-[#0c0e18] border border-slate-800 focus:border-indigo-500 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-500 outline-none transition-colors"
-              />
+            {/* Search & Category Filter Bar */}
+            <div className="bg-[#0c0e18] border border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-lg space-y-3">
+              <div className="flex flex-col md:flex-row items-center gap-3">
+                <div className="relative w-full md:w-80">
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cari dalam koleksi produk Anda..."
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder:text-slate-500 outline-none transition-colors"
+                  />
+                </div>
+
+                {/* Category Pills */}
+                <div className="flex flex-wrap gap-1.5 w-full">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                        selectedCategory === cat
+                          ? "bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 shadow-sm"
+                          : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/60"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {filteredProducts.length === 0 ? (
@@ -319,15 +397,25 @@ export default function MemberWorkspacePage() {
                 <FolderLock className="w-10 h-10 text-slate-600 mx-auto" />
                 <h3 className="text-sm font-bold text-white">Belum Ada Produk yang Terhubung</h3>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  Jika Anda baru saja membeli di Lynk.id, pastikan Anda menggunakan link aktivasi yang dikirimkan ke email Anda.
+                  {isAdmin
+                    ? "Belum ada produk dibuat di Supabase. Anda dapat menambahkan produk baru di tab Admin Vault."
+                    : "Jika Anda baru saja membeli di Lynk.id, pastikan Anda menggunakan link aktivasi yang dikirimkan ke email Anda."}
                 </p>
+                {isAdmin && (
+                  <DynamicLink
+                    href="/admin"
+                    className="inline-block px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold mt-2"
+                  >
+                    + Buat Produk di Admin Vault
+                  </DynamicLink>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredProducts.map((p) => (
                   <div
                     key={p.id}
-                    className="bg-[#0c0e18] border border-slate-800 hover:border-slate-700 rounded-3xl overflow-hidden flex flex-col justify-between group transition-all shadow-lg"
+                    className="bg-[#0c0e18] border border-slate-800 hover:border-indigo-500/40 rounded-3xl overflow-hidden flex flex-col justify-between group transition-all shadow-lg"
                   >
                     <div>
                       {/* Thumbnail Header */}
@@ -339,12 +427,12 @@ export default function MemberWorkspacePage() {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#0c0e18] via-transparent to-transparent" />
-                        <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                        <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
                           <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-indigo-600 text-white backdrop-blur-md">
                             {p.badge || p.category}
                           </span>
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-slate-950/80 text-emerald-400 border border-slate-700 backdrop-blur-md">
-                            ✓ Akses Permanen
+                            ✓ {isAdmin ? "Master Access" : "Akses Permanen"}
                           </span>
                         </div>
                       </div>
@@ -352,9 +440,9 @@ export default function MemberWorkspacePage() {
                       {/* Content Info */}
                       <div className="p-5 space-y-2">
                         <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
-                          <span>{p.category}</span>
+                          <span className="text-indigo-300 font-semibold">{p.category}</span>
                           <span>•</span>
-                          <span className="text-indigo-400">{p.version || "v1.0.0"}</span>
+                          <span className="text-slate-400">{p.version || "v1.0.0"}</span>
                         </div>
                         <h3 className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors leading-snug">
                           {p.title}
@@ -372,7 +460,13 @@ export default function MemberWorkspacePage() {
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition-all active:scale-95 cursor-pointer"
                       >
                         {p.category === "Ebook" ? <BookOpen className="w-3.5 h-3.5" /> : <Code2 className="w-3.5 h-3.5" />}
-                        <span>{p.category === "Ebook" ? "Buka Ebook Reader" : "Buka Script & Hub"}</span>
+                        <span>
+                          {p.category === "Ebook"
+                            ? "Buka Ebook Reader"
+                            : p.category === "Prompt Pack"
+                            ? "Buka Prompt Library"
+                            : "Buka Script & Hub"}
+                        </span>
                       </button>
 
                       {p.download_url && (
@@ -380,10 +474,10 @@ export default function MemberWorkspacePage() {
                           href={p.download_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-colors"
-                          title="Download File Asli"
+                          className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-colors cursor-pointer"
+                          title="Download File Asli (.PDF / .ZIP)"
                         >
-                          <Download className="w-4 h-4" />
+                          <Download className="w-4 h-4 text-emerald-400" />
                         </a>
                       )}
                     </div>
@@ -464,7 +558,7 @@ export default function MemberWorkspacePage() {
         )}
       </main>
 
-      {/* PRODUCT CONTENT VIEWER MODAL */}
+      {/* PRODUCT CONTENT VIEWER & EBOOK READER MODAL */}
       {selectedProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
           <div className="fixed inset-0" onClick={() => setSelectedProduct(null)} />
@@ -480,10 +574,18 @@ export default function MemberWorkspacePage() {
                   <span className="text-xs text-emerald-400 font-mono">
                     {selectedProduct.version || "v1.0.0"}
                   </span>
+                  {isAdmin && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800/60">
+                      ADMIN OVERRIDE
+                    </span>
+                  )}
                 </div>
                 <h2 className="text-lg sm:text-xl font-bold text-white mt-1">
                   {selectedProduct.title}
                 </h2>
+                {selectedProduct.tagline && (
+                  <p className="text-xs text-slate-400 mt-0.5">{selectedProduct.tagline}</p>
+                )}
               </div>
 
               <button
@@ -499,7 +601,7 @@ export default function MemberWorkspacePage() {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-300 flex items-center gap-2">
                   <FileText className="w-3.5 h-3.5 text-indigo-400" />
-                  Isi Materi &amp; Source Code
+                  Isi Materi, Source Code &amp; Prompt Command
                 </span>
 
                 <button
@@ -517,12 +619,12 @@ export default function MemberWorkspacePage() {
             </div>
 
             {/* Footer Action */}
-            <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
+            <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
               <span className="text-xs text-slate-500 font-mono">
-                Order ID: {selectedProduct.orderId || "MANUAL_AUTH"}
+                Order ID: {selectedProduct.orderId || "ADMIN_MASTER_OVERRIDE"}
               </span>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 {selectedProduct.download_url && (
                   <a
                     href={selectedProduct.download_url}
@@ -556,7 +658,7 @@ export default function MemberWorkspacePage() {
               <h3 className="text-sm font-bold text-white">
                 {editingNote.id ? "Edit Catatan" : "Tambah Catatan Baru"}
               </h3>
-              <button onClick={() => setIsNoteModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsNoteModalOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -589,13 +691,13 @@ export default function MemberWorkspacePage() {
                 <button
                   type="button"
                   onClick={() => setIsNoteModalOpen(false)}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-900 text-slate-300 text-xs"
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-900 text-slate-300 text-xs cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold"
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer"
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>Simpan</span>

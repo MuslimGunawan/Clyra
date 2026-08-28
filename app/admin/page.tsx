@@ -12,9 +12,12 @@ import {
   ShieldCheck,
   Send,
   GitBranch,
-  Users
+  Users,
+  Eye,
+  ExternalLink
 } from "lucide-react";
 import { isAdminAuthenticated, logoutAdmin } from "@/lib/adminAuth";
+import { generateMemberSessionToken, ADMIN_MASTER_EMAIL } from "@/lib/memberAuth";
 import PromptManager from "@/components/admin/PromptManager";
 import ProjectManager from "@/components/admin/ProjectManager";
 import MemberProductManager from "@/components/admin/MemberProductManager";
@@ -45,6 +48,14 @@ export default function AdminDashboardPage() {
     logoutAdmin();
     setIsAuthenticated(false);
     router.push("/");
+  };
+
+  const handlePreviewMemberWorkspace = () => {
+    const token = generateMemberSessionToken(ADMIN_MASTER_EMAIL, "admin");
+    localStorage.setItem("clyra_member_token", token);
+    localStorage.setItem("clyra_member_email", ADMIN_MASTER_EMAIL);
+    localStorage.setItem("clyra_member_name", "Master Administrator");
+    router.push("/member/workspace");
   };
 
   if (isCheckingAuth) {
@@ -111,7 +122,7 @@ export default function AdminDashboardPage() {
 
       <main className="relative z-10 flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8">
         {/* Top Bar Navigation */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <DynamicLink
             href="/"
             className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-indigo-400 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800 transition-colors"
@@ -120,7 +131,17 @@ export default function AdminDashboardPage() {
             <span>Kembali ke Beranda</span>
           </DynamicLink>
 
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {/* Direct Member Workspace Preview Button */}
+            <button
+              onClick={handlePreviewMemberWorkspace}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-indigo-950 border border-slate-800 hover:border-indigo-500/50 text-indigo-300 text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
+              title="Buka Member Workspace dengan Semua Produk Terbuka (Master Admin Access)"
+            >
+              <Eye className="w-3.5 h-3.5 text-indigo-400" />
+              <span>👑 Preview Member (Unlocked)</span>
+            </button>
+
             {/* Quick Publish Button */}
             <button
               onClick={() => setShowPublishModal(true)}

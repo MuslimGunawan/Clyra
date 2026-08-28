@@ -1,9 +1,11 @@
 /**
  * Member Auth Security & Password Hashing Engine using native Web Crypto API
+ * Supports member authentication, admin master override preview mode, and secure session tokens.
  */
 
 const SALT_SECRET = "clyra_member_vault_salt_2026_x89!";
 const TOKEN_SECRET = "clyra_member_session_auth_secret_99!";
+export const ADMIN_MASTER_EMAIL = "admin@clyra.internal";
 
 // Hash password with SHA-256 and salted key
 export async function hashPassword(password: string): Promise<string> {
@@ -20,10 +22,12 @@ export async function verifyPassword(password: string, storedHash: string): Prom
   return computed === storedHash;
 }
 
-// Generate simple deterministic session token
-export function generateMemberSessionToken(email: string): string {
+// Generate simple deterministic session token (supports role)
+export function generateMemberSessionToken(email: string, role: "member" | "admin" = "member"): string {
   const timestamp = Date.now();
-  const payload = `${email.toLowerCase().trim()}:${timestamp}`;
+  const cleanEmail = email.toLowerCase().trim();
+  const assignedRole = cleanEmail === ADMIN_MASTER_EMAIL || cleanEmail === "admin" ? "admin" : role;
+  const payload = `${cleanEmail}:${timestamp}:${assignedRole}`;
   const encoded = Buffer.from(payload).toString("base64url");
   
   // Calculate signature
@@ -37,13 +41,13 @@ export function generateMemberSessionToken(email: string): string {
 }
 
 // Verify member session token
-export function verifyMemberSessionToken(token: string): { email: string; valid: boolean } {
+export function verifyMemberSessionToken(token: string): { email: string; role: string; valid: boolean } {
   try {
     const [encoded, sig] = token.split(".");
-    if (!encoded || !sig) return { email: "", valid: false };
+    if (!encoded || !sig) return { email: "", role: "member", valid: false };
 
     const payload = Buffer.from(encoded, "base64url").toString("utf-8");
-    const [email] = payload.split(":");
+    const [email, , role] = payload.split(":");
 
     // Verify signature
     let hash = 5381;
@@ -54,10 +58,16 @@ export function verifyMemberSessionToken(token: string): { email: string; valid:
     const expectedSig = (hash >>> 0).toString(16);
 
     if (sig === expectedSig && email) {
-      return { email: email.toLowerCase().trim(), valid: true };
+      const cleanEmail = email.toLowerCase().trim();
+      const isAdmin = cleanEmail === ADMIN_MASTER_EMAIL || cleanEmail === "admin" || role === "admin";
+      return { 
+        email: cleanEmail, 
+        role: isAdmin ? "admin" : "member", 
+        valid: true 
+      };
     }
-    return { email: "", valid: false };
+    return { email: "", role: "member", valid: false };
   } catch {
-    return { email: "", valid: false };
+    return { email: "", role: "member", valid: false };
   }
 }
