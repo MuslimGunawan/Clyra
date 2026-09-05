@@ -59,8 +59,9 @@ async function downloadInHouseMedia(
   targetUrl: string,
   rawTitle: string,
   type: "video" | "audio",
-  isInstagram = false
-): Promise<string | null> {
+  isInstagram = false,
+  signal?: AbortSignal
+): Promise<{ fileUrl: string; fileKey: string; ext: string } | null> {
   try {
     // Generate an elegant, non-guessable alphanumeric hash for physical storage
     const obfuscatedKey = generateObfuscatedId("cly", 16);
@@ -108,7 +109,7 @@ async function downloadInHouseMedia(
           "--", // Parameter injection shield
           targetUrl,
         ],
-        { timeout: 70000 }
+        { timeout: 70000, signal }
       );
     } else {
       const extractorArgs = isInstagram
@@ -132,14 +133,22 @@ async function downloadInHouseMedia(
           "--", // Parameter injection shield
           targetUrl,
         ],
-        { timeout: 90000 }
+        { timeout: 90000, signal }
       );
     }
 
     if (fs.existsSync(outputFile)) {
-      return `/downloads/${obfuscatedKey}.${ext}`;
+      return {
+        fileUrl: `/downloads/${obfuscatedKey}.${ext}`,
+        fileKey: obfuscatedKey,
+        ext,
+      };
     }
-  } catch (err) {
+  } catch (err: any) {
+    if (signal?.aborted || err.name === "AbortError" || err.code === "ABORT_ERR") {
+      console.log("Download process cancelled by client signal.");
+      return null;
+    }
     console.error("Local media processing error:", err);
   }
   return null;
@@ -187,15 +196,25 @@ export async function POST(req: NextRequest) {
       }
 
       const safeTitle = sanitizeFilename(requestedTitle, `clyra_media_${Date.now()}`);
-      const fileUrl = await downloadInHouseMedia(
+      const result = await downloadInHouseMedia(
         cleanTargetUrl,
         safeTitle,
         formatType === "audio" ? "audio" : "video",
-        isIg
+        isIg,
+        req.signal
       );
 
-      if (fileUrl) {
-        return NextResponse.json({ success: true, downloadUrl: fileUrl });
+      if (result) {
+        return NextResponse.json({
+          success: true,
+          downloadUrl: result.fileUrl,
+          blobUrl: `/api/media/blob?key=${result.fileKey}`,
+          fileKey: result.fileKey,
+          ext: result.ext,
+        });
+      }
+      if (req.signal?.aborted) {
+        return NextResponse.json({ error: "Proses dibatalkan pengguna." }, { status: 499 });
       }
       return NextResponse.json({ error: "Gagal merender file media." }, { status: 500 });
     }

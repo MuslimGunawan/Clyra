@@ -327,7 +327,7 @@ export default function MediaDownloader() {
   };
 
   // Spotify Track Downloader (Single Track from Playlist/Album)
-  const handleDownloadSpotifyTrack = async (track: SpotifyTrackItem) => {
+  const handleDownloadSpotifyTrack = async (track: SpotifyTrackItem, signal?: AbortSignal) => {
     setTrackDownloadingId(track.id);
     setTrackStatusMap((prev) => ({ ...prev, [track.id]: "downloading" }));
     showToast(`Memulai konversi "${track.title}"...`, "info");
@@ -336,6 +336,7 @@ export default function MediaDownloader() {
       const res = await fetch("/api/media", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal,
         body: JSON.stringify({
           action: "download_stream",
           url: url || "https://open.spotify.com",
@@ -346,6 +347,7 @@ export default function MediaDownloader() {
       });
 
       const data = await res.json();
+      if (signal?.aborted) return;
       if (!res.ok || !data.downloadUrl) {
         throw new Error(data.error || "Gagal mengonversi lagu.");
       }
@@ -360,6 +362,7 @@ export default function MediaDownloader() {
       setTrackStatusMap((prev) => ({ ...prev, [track.id]: "done" }));
       showToast(`"${track.title}" berhasil diunduh!`, "success");
     } catch (err: any) {
+      if (signal?.aborted) return;
       setTrackStatusMap((prev) => ({ ...prev, [track.id]: "error" }));
       showToast(err.message || "Gagal mengunduh lagu", "error");
     } finally {
@@ -372,34 +375,45 @@ export default function MediaDownloader() {
     if (tracksToDownload.length === 0) return;
     setIsBatchRunning(true);
     cancelBatchRef.current = false;
+    const controller = new AbortController();
+    activeAbortControllerRef.current = controller;
     setBatchProgress({ current: 0, total: tracksToDownload.length, currentTitle: "" });
 
     for (let i = 0; i < tracksToDownload.length; i++) {
-      if (cancelBatchRef.current) break;
+      if (cancelBatchRef.current || controller.signal.aborted) break;
       const track = tracksToDownload[i];
       setBatchProgress({ current: i + 1, total: tracksToDownload.length, currentTitle: track.title });
-      await handleDownloadSpotifyTrack(track);
+      await handleDownloadSpotifyTrack(track, controller.signal);
+      if (cancelBatchRef.current || controller.signal.aborted) break;
       // Brief pause between downloads to avoid browser pop-up blocking
       await new Promise((r) => setTimeout(r, 1200));
     }
 
     setIsBatchRunning(false);
-    showToast("Proses antrean unduhan selesai!", "success");
+    if (!cancelBatchRef.current) {
+      showToast("Proses antrean unduhan selesai!", "success");
+    }
   };
+
+  const activeAbortControllerRef = useRef<AbortController | null>(null);
 
   const handleCancelBatch = () => {
     cancelBatchRef.current = true;
+    activeAbortControllerRef.current?.abort();
     setIsBatchRunning(false);
     showToast("Antrean unduhan dibatalkan.", "info");
   };
 
   // Helper to fetch Spotify track MP3 Blob for client-side packaging
+  // Uses /api/media/blob?key=... (application/octet-stream) to completely bypass IDM browser interception!
   const fetchSpotifyTrackBlob = async (
-    track: SpotifyTrackItem
+    track: SpotifyTrackItem,
+    signal?: AbortSignal
   ): Promise<{ blob: Blob; filename: string } | null> => {
     const res = await fetch("/api/media", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal,
       body: JSON.stringify({
         action: "download_stream",
         url: url || "https://open.spotify.com",
@@ -410,11 +424,13 @@ export default function MediaDownloader() {
     });
 
     const data = await res.json();
-    if (!res.ok || !data.downloadUrl) {
+    if (!res.ok || (!data.blobUrl && !data.downloadUrl)) {
       throw new Error(data.error || `Gagal mengonversi lagu "${track.title}"`);
     }
 
-    const fileRes = await fetch(data.downloadUrl);
+    // Prefer raw blob URL (/api/media/blob?key=...) to prevent IDM from intercepting
+    const streamTarget = data.blobUrl || data.downloadUrl;
+    const fileRes = await fetch(streamTarget, { signal });
     if (!fileRes.ok) {
       throw new Error(`Gagal mengunduh file biner "${track.title}"`);
     }
@@ -428,6 +444,9 @@ export default function MediaDownloader() {
     if (tracksToDownload.length === 0) return;
     setIsZipRunning(true);
     cancelZipRef.current = false;
+    const controller = new AbortController();
+    activeAbortControllerRef.current = controller;
+
     setZipProgress({
       current: 0,
       total: tracksToDownload.length,
@@ -456,7 +475,7 @@ export default function MediaDownloader() {
       let successCount = 0;
 
       for (let i = 0; i < tracksToDownload.length; i++) {
-        if (cancelZipRef.current) break;
+        if (cancelZipRef.current || controller.signal.aborted) break;
         const track = tracksToDownload[i];
         const progressPercent = Math.round((i / tracksToDownload.length) * 90);
         setZipProgress({
@@ -467,20 +486,23 @@ export default function MediaDownloader() {
         });
 
         try {
+          if (cancelZipRef.current || controller.signal.aborted) break;
           setTrackStatusMap((prev) => ({ ...prev, [track.id]: "downloading" }));
-          const result = await fetchSpotifyTrackBlob(track);
+          const result = await fetchSpotifyTrackBlob(track, controller.signal);
+          if (cancelZipRef.current || controller.signal.aborted) break;
           if (result) {
             zip.file(result.filename, result.blob);
             setTrackStatusMap((prev) => ({ ...prev, [track.id]: "done" }));
             successCount++;
           }
         } catch (err: any) {
+          if (cancelZipRef.current || controller.signal.aborted) break;
           console.error(`Error adding ${track.title} to zip:`, err);
           setTrackStatusMap((prev) => ({ ...prev, [track.id]: "error" }));
         }
       }
 
-      if (cancelZipRef.current) {
+      if (cancelZipRef.current || controller.signal.aborted) {
         showToast("Pembuatan file ZIP dibatalkan.", "info");
         return;
       }
@@ -526,6 +548,7 @@ export default function MediaDownloader() {
       });
       showToast(`Arsip "${safeZipName}" berhasil diunduh!`, "success");
     } catch (err: any) {
+      if (cancelZipRef.current) return;
       showToast(err.message || "Gagal mengemas file ZIP.", "error");
     } finally {
       setIsZipRunning(false);
@@ -534,6 +557,7 @@ export default function MediaDownloader() {
 
   const handleCancelZip = () => {
     cancelZipRef.current = true;
+    activeAbortControllerRef.current?.abort();
     setIsZipRunning(false);
     showToast("Pembuatan file ZIP dibatalkan.", "info");
   };
