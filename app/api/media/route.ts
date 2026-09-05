@@ -10,6 +10,7 @@ import {
   generateObfuscatedId, 
   encodeObfuscatedToken 
 } from "@/lib/security";
+import { extractSpotifyData, isSpotifyUrl } from "@/lib/spotify";
 
 const execFileAsync = promisify(execFile);
 
@@ -156,7 +157,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { url, action, formatType, safeTitle: requestedTitle, isInstagram } = await req.json();
+    const { url, action, formatType, safeTitle: requestedTitle, isInstagram, searchQuery } = await req.json();
     if (!url || typeof url !== "string") {
       return NextResponse.json({ error: "URL tidak valid" }, { status: 400 });
     }
@@ -176,7 +177,11 @@ export async function POST(req: NextRequest) {
       const isIg = Boolean(isInstagram || rawUrl.includes("instagram.com"));
       let cleanTargetUrl = rawUrl;
 
-      if (!isIg && (rawUrl.includes("youtube.com") || rawUrl.includes("youtu.be"))) {
+      if (searchQuery && typeof searchQuery === "string") {
+        // Spotify track audio resolution via ytsearch1
+        const cleanQ = searchQuery.replace(/[^\w\s\-\.\,\(\)\[\]]/gi, "").trim().slice(0, 120);
+        cleanTargetUrl = `ytsearch1:${cleanQ}`;
+      } else if (!isIg && (rawUrl.includes("youtube.com") || rawUrl.includes("youtu.be"))) {
         const ytId = getYouTubeId(rawUrl);
         if (ytId) cleanTargetUrl = `https://www.youtube.com/watch?v=${ytId}`;
       }
@@ -195,7 +200,87 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Gagal merender file media." }, { status: 500 });
     }
 
-    // 4. INSTAGRAM EXTRACTION
+    // 4. SPOTIFY EXTRACTION (Tracks, Playlists, Albums, Artists)
+    if (isSpotifyUrl(rawUrl)) {
+      const spotData = await extractSpotifyData(rawUrl);
+      if (spotData) {
+        const safeTitle = sanitizeFilename(`${spotData.author} - ${spotData.title}`, `spotify_${Date.now()}`);
+        const coverToken = encodeObfuscatedToken({
+          url: spotData.thumbnail,
+          filename: `${safeTitle}_cover.jpg`,
+          type: "direct",
+        });
+        const coverDownloadUrl = `/api/media/download?token=${coverToken}`;
+
+        const isSingleTrack = spotData.spotifyType === "track";
+        const singleTrack = spotData.tracks[0];
+
+        const options: any[] = [];
+
+        if (isSingleTrack && singleTrack) {
+          options.push({
+            id: "spot_audio_320",
+            quality: "Audio MP3 Murni (320 kbps High Quality)",
+            format: "mp3",
+            size: "320kbps MP3 Penuh",
+            type: "audio",
+            label: "Download Lagu MP3 Kualitas Penuh (320 kbps)",
+            directDownloadUrl: `/downloads/${generateObfuscatedId("cly_spot")}.mp3`,
+            filename: `${sanitizeFilename(`${singleTrack.artist} - ${singleTrack.title}`)}.mp3`,
+            safeTitle: `${singleTrack.artist} - ${singleTrack.title}`,
+            needsProcessing: true,
+            cleanUrl: rawUrl,
+            searchQuery: singleTrack.query,
+          });
+
+          if (singleTrack.previewUrl) {
+            const previewToken = encodeObfuscatedToken({
+              url: singleTrack.previewUrl,
+              filename: `${sanitizeFilename(`${singleTrack.artist} - ${singleTrack.title}`)}_preview.mp3`,
+              type: "direct",
+              format: "audio",
+            });
+            options.push({
+              id: "spot_preview",
+              quality: "Audio Preview 30 Detik (Direct Spotify CDN)",
+              format: "mp3",
+              size: "Preview MP3 Cepat",
+              type: "audio",
+              label: "Download Preview Audio Resmi (Langsung dari Spotify)",
+              directDownloadUrl: `/api/media/download?token=${previewToken}`,
+              filename: `${sanitizeFilename(`${singleTrack.artist} - ${singleTrack.title}`)}_preview.mp3`,
+              safeTitle: `${singleTrack.artist} - ${singleTrack.title}_preview`,
+            });
+          }
+        }
+
+        options.push({
+          id: "spot_cover",
+          quality: `Cover Artwork HD (${spotData.spotifyType.toUpperCase()})`,
+          format: "jpg",
+          size: "Foto HD Asli",
+          type: "image",
+          label: "Download Cover Artwork Resmi Resolusi Penuh",
+          directDownloadUrl: coverDownloadUrl,
+          filename: `${safeTitle}_cover.jpg`,
+          safeTitle,
+        });
+
+        return NextResponse.json({
+          title: spotData.title,
+          author: spotData.author,
+          thumbnail: spotData.thumbnail,
+          platform: "spotify",
+          contentTypeLabel: spotData.contentTypeLabel,
+          spotifyType: spotData.spotifyType,
+          totalTracks: spotData.totalTracks,
+          tracks: spotData.tracks,
+          options,
+        });
+      }
+    }
+
+    // 5. INSTAGRAM EXTRACTION
     if (rawUrl.includes("instagram.com")) {
       const isReel = rawUrl.includes("/reel/") || rawUrl.includes("/reels/");
       const isStory = rawUrl.includes("/stories/");
