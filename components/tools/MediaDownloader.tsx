@@ -28,7 +28,8 @@ import {
   Radio,
   Search,
   Square,
-  PlayCircle
+  PlayCircle,
+  Package
 } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
 
@@ -88,6 +89,14 @@ export default function MediaDownloader() {
     currentTitle: "",
   });
   const cancelBatchRef = useRef(false);
+  const [isZipRunning, setIsZipRunning] = useState(false);
+  const [zipProgress, setZipProgress] = useState<{ current: number; total: number; currentTitle: string; percent: number }>({
+    current: 0,
+    total: 0,
+    currentTitle: "",
+    percent: 0,
+  });
+  const cancelZipRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [extractedData, setExtractedData] = useState<{
@@ -382,6 +391,151 @@ export default function MediaDownloader() {
     cancelBatchRef.current = true;
     setIsBatchRunning(false);
     showToast("Antrean unduhan dibatalkan.", "info");
+  };
+
+  // Helper to fetch Spotify track MP3 Blob for client-side packaging
+  const fetchSpotifyTrackBlob = async (
+    track: SpotifyTrackItem
+  ): Promise<{ blob: Blob; filename: string } | null> => {
+    const res = await fetch("/api/media", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "download_stream",
+        url: url || "https://open.spotify.com",
+        searchQuery: track.query,
+        formatType: "audio",
+        safeTitle: `${track.artist} - ${track.title}`,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.downloadUrl) {
+      throw new Error(data.error || `Gagal mengonversi lagu "${track.title}"`);
+    }
+
+    const fileRes = await fetch(data.downloadUrl);
+    if (!fileRes.ok) {
+      throw new Error(`Gagal mengunduh file biner "${track.title}"`);
+    }
+    const blob = await fileRes.blob();
+    const filename = `${String(track.trackNumber).padStart(2, "0")}. ${track.artist} - ${track.title}.mp3`;
+    return { blob, filename };
+  };
+
+  // Batch ZIP Archive Generator using client-side JSZip
+  const handleStartZipDownload = async (tracksToDownload: SpotifyTrackItem[]) => {
+    if (tracksToDownload.length === 0) return;
+    setIsZipRunning(true);
+    cancelZipRef.current = false;
+    setZipProgress({
+      current: 0,
+      total: tracksToDownload.length,
+      currentTitle: "Menginisialisasi arsip ZIP...",
+      percent: 0,
+    });
+    showToast("Memulai pengemasan seluruh lagu ke file ZIP...", "info");
+
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+
+      // Include cover art image if present
+      if (extractedData?.thumbnail) {
+        try {
+          const thumbRes = await fetch(extractedData.thumbnail);
+          if (thumbRes.ok) {
+            const thumbBlob = await thumbRes.blob();
+            zip.file("cover.jpg", thumbBlob);
+          }
+        } catch (e) {
+          console.error("Gagal menyertakan cover art ke ZIP", e);
+        }
+      }
+
+      let successCount = 0;
+
+      for (let i = 0; i < tracksToDownload.length; i++) {
+        if (cancelZipRef.current) break;
+        const track = tracksToDownload[i];
+        const progressPercent = Math.round((i / tracksToDownload.length) * 90);
+        setZipProgress({
+          current: i + 1,
+          total: tracksToDownload.length,
+          currentTitle: track.title,
+          percent: progressPercent,
+        });
+
+        try {
+          setTrackStatusMap((prev) => ({ ...prev, [track.id]: "downloading" }));
+          const result = await fetchSpotifyTrackBlob(track);
+          if (result) {
+            zip.file(result.filename, result.blob);
+            setTrackStatusMap((prev) => ({ ...prev, [track.id]: "done" }));
+            successCount++;
+          }
+        } catch (err: any) {
+          console.error(`Error adding ${track.title} to zip:`, err);
+          setTrackStatusMap((prev) => ({ ...prev, [track.id]: "error" }));
+        }
+      }
+
+      if (cancelZipRef.current) {
+        showToast("Pembuatan file ZIP dibatalkan.", "info");
+        return;
+      }
+
+      if (successCount === 0) {
+        throw new Error("Tidak ada lagu yang berhasil diproses ke dalam file ZIP.");
+      }
+
+      setZipProgress((prev) => ({
+        ...prev,
+        currentTitle: "Mengompres & memfinalisasi paket file ZIP...",
+        percent: 94,
+      }));
+
+      const zipBlob = await zip.generateAsync(
+        { type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } },
+        (metadata) => {
+          setZipProgress((prev) => ({
+            ...prev,
+            percent: 90 + Math.round(metadata.percent * 0.1),
+          }));
+        }
+      );
+
+      const safeZipName = `${(extractedData?.title || "spotify_playlist")
+        .replace(/[^\w\s\-\.]/gi, "_")
+        .trim()}.zip`;
+
+      const downloadUrl = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = safeZipName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 10000);
+
+      setZipProgress({
+        current: tracksToDownload.length,
+        total: tracksToDownload.length,
+        currentTitle: "File ZIP Siap!",
+        percent: 100,
+      });
+      showToast(`Arsip "${safeZipName}" berhasil diunduh!`, "success");
+    } catch (err: any) {
+      showToast(err.message || "Gagal mengemas file ZIP.", "error");
+    } finally {
+      setIsZipRunning(false);
+    }
+  };
+
+  const handleCancelZip = () => {
+    cancelZipRef.current = true;
+    setIsZipRunning(false);
+    showToast("Pembuatan file ZIP dibatalkan.", "info");
   };
 
   // Play / Pause 30-second Official Audio Preview
@@ -770,10 +924,12 @@ export default function MediaDownloader() {
                   </div>
                 </div>
 
-                {/* Batch Action Buttons */}
-                <div className="flex items-center gap-2">
+                {/* Batch Action Buttons: 2 Pilihan (File Terpisah & Paket ZIP) */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Tombol 1: Download File Terpisah */}
                   {isBatchRunning ? (
                     <button
+                      type="button"
                       onClick={handleCancelBatch}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-white text-xs font-bold shadow transition-all cursor-pointer"
                     >
@@ -782,36 +938,86 @@ export default function MediaDownloader() {
                     </button>
                   ) : (
                     <button
+                      type="button"
                       onClick={() => handleStartBatchDownload(filteredTracks)}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all active:scale-95 cursor-pointer"
-                      title="Unduh semua lagu secara berurutan"
+                      disabled={isZipRunning}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                      title="Unduh semua file MP3 satu per satu ke folder Download"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span>⚡ Download Semua ({filteredTracks.length})</span>
+                      <span>⚡ File Terpisah ({filteredTracks.length})</span>
+                    </button>
+                  )}
+
+                  {/* Tombol 2: Download Paket .ZIP */}
+                  {isZipRunning ? (
+                    <button
+                      type="button"
+                      onClick={handleCancelZip}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-white text-xs font-bold shadow transition-all cursor-pointer"
+                    >
+                      <Square className="w-3 h-3 fill-white" />
+                      <span>Batal ZIP</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleStartZipDownload(filteredTracks)}
+                      disabled={isBatchRunning}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                      title="Unduh seluruh lagu dan cover art dalam 1 file .ZIP"
+                    >
+                      <Package className="w-3.5 h-3.5" />
+                      <span>📦 Paket .ZIP ({filteredTracks.length})</span>
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Batch Running Progress Bar */}
+              {/* Batch Running Progress Bar (Individual Files) */}
               {isBatchRunning && (
-                <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/40 space-y-2 animate-fadeIn">
+                <div className="p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/40 space-y-2 animate-fadeIn">
                   <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-emerald-300 font-bold">
+                    <div className="flex items-center gap-2 text-indigo-300 font-bold">
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                       <span>
-                        Mengunduh Lagu {batchProgress.current} dari {batchProgress.total}: &quot;{batchProgress.currentTitle}&quot;
+                        Mengunduh File {batchProgress.current} dari {batchProgress.total}: &quot;{batchProgress.currentTitle}&quot;
                       </span>
                     </div>
-                    <span className="font-mono text-emerald-400 font-bold">
+                    <span className="font-mono text-indigo-400 font-bold">
                       {Math.round((batchProgress.current / (batchProgress.total || 1)) * 100)}%
                     </span>
                   </div>
                   <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-800">
                     <div
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                      className="bg-indigo-500 h-full rounded-full transition-all duration-300"
                       style={{
                         width: `${Math.round((batchProgress.current / (batchProgress.total || 1)) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* ZIP Packaging Progress Bar */}
+              {isZipRunning && (
+                <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/40 space-y-2 animate-fadeIn">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-emerald-300 font-bold">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>
+                        Mengemas ke ZIP ({zipProgress.current}/{zipProgress.total}): &quot;{zipProgress.currentTitle}&quot;
+                      </span>
+                    </div>
+                    <span className="font-mono text-emerald-400 font-bold">
+                      {zipProgress.percent}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-800">
+                    <div
+                      className="bg-emerald-500 h-full rounded-full transition-all duration-300 shadow-sm shadow-emerald-500/50"
+                      style={{
+                        width: `${zipProgress.percent}%`,
                       }}
                     />
                   </div>
