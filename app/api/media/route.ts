@@ -87,7 +87,7 @@ async function downloadInHouseMedia(
     if (type === "audio") {
       const extractorArgs = isInstagram
         ? []
-        : ["--extractor-args", "youtube:player_client=web_embedded,android"];
+        : ["--extractor-args", "youtube:player_client=android"];
 
       await execFileAsync(
         "python",
@@ -98,7 +98,7 @@ async function downloadInHouseMedia(
           ...extractorArgs,
           "--no-playlist",
           "-f",
-          "bestaudio/best",
+          "ba/ba*/bestaudio/b/best",
           "-x",
           "--audio-format",
           "mp3",
@@ -109,12 +109,12 @@ async function downloadInHouseMedia(
           "--", // Parameter injection shield
           targetUrl,
         ],
-        { timeout: 70000, signal }
+        { timeout: 90000, signal }
       );
     } else {
       const extractorArgs = isInstagram
         ? []
-        : ["--extractor-args", "youtube:player_client=web_embedded,android"];
+        : ["--extractor-args", "youtube:player_client=android,web"];
 
       await execFileAsync(
         "python",
@@ -188,7 +188,12 @@ export async function POST(req: NextRequest) {
 
       if (searchQuery && typeof searchQuery === "string") {
         // Spotify track audio resolution via ytsearch1
-        const cleanQ = searchQuery.replace(/[^\w\s\-\.\,\(\)\[\]]/gi, "").trim().slice(0, 120);
+        const cleanQ = searchQuery
+          .replace(/,/g, " ")
+          .replace(/[^\w\s\-\.\(\)\[\]]/gi, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 120);
         cleanTargetUrl = `ytsearch1:${cleanQ}`;
       } else if (!isIg && (rawUrl.includes("youtube.com") || rawUrl.includes("youtu.be"))) {
         const ytId = getYouTubeId(rawUrl);

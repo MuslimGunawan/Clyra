@@ -135,6 +135,8 @@ export async function extractSpotifyData(rawUrl: string): Promise<SpotifyResult 
     if (type === "track") {
       // Single Track
       const trackDuration = entity.duration || 0;
+      const cleanArtist = artistName.replace(/,/g, " ").replace(/\s+/g, " ").trim();
+      const cleanTitle = finalTitle.replace(/,/g, " ").replace(/\s+/g, " ").trim();
       tracks.push({
         id: `track_${id}`,
         trackNumber: 1,
@@ -143,7 +145,7 @@ export async function extractSpotifyData(rawUrl: string): Promise<SpotifyResult 
         durationFormatted: formatDuration(trackDuration),
         durationMs: trackDuration,
         previewUrl: entity.audioPreview?.url || null,
-        query: `${artistName} - ${finalTitle} Official Audio`,
+        query: `${cleanArtist} ${cleanTitle} Audio`.trim(),
         uri: entity.uri || `spotify:track:${id}`,
       });
     } else if (entity.trackList && Array.isArray(entity.trackList)) {
@@ -153,6 +155,8 @@ export async function extractSpotifyData(rawUrl: string): Promise<SpotifyResult 
         const tArtist = t.subtitle || artistName || "Various Artists";
         const tDuration = t.duration || 0;
         const trackId = t.uri ? t.uri.replace("spotify:track:", "") : `${idx + 1}`;
+        const cleanArtist = tArtist.replace(/,/g, " ").replace(/\s+/g, " ").trim();
+        const cleanTitle = tTitle.replace(/,/g, " ").replace(/\s+/g, " ").trim();
 
         return {
           id: `track_${trackId}_${idx}`,
@@ -162,7 +166,7 @@ export async function extractSpotifyData(rawUrl: string): Promise<SpotifyResult 
           durationFormatted: formatDuration(tDuration),
           durationMs: tDuration,
           previewUrl: t.audioPreview?.url || null,
-          query: `${tArtist} - ${tTitle} Official Audio`,
+          query: `${cleanArtist} ${cleanTitle} Audio`.trim(),
           uri: t.uri || `spotify:track:${trackId}`,
         };
       });

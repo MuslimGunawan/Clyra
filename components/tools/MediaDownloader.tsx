@@ -273,13 +273,18 @@ export default function MediaDownloader() {
 
       // On-demand in-house processing for YouTube / Instagram / Spotify
       if (opt.needsProcessing && opt.cleanUrl) {
+        let queryToUse = opt.searchQuery;
+        if (!queryToUse && (opt.id?.startsWith("spot_") || opt.cleanUrl.includes("spotify.com"))) {
+          queryToUse = `${opt.safeTitle} Audio`;
+        }
+
         const res = await fetch("/api/media", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "download_stream",
             url: opt.cleanUrl,
-            searchQuery: opt.searchQuery,
+            searchQuery: queryToUse,
             formatType: opt.type,
             safeTitle: opt.safeTitle,
             isInstagram: opt.isInstagram,
@@ -927,6 +932,51 @@ export default function MediaDownloader() {
               </p>
             </div>
           </div>
+
+          {/* SPOTIFY SINGLE TRACK INTERACTIVE PREVIEW */}
+          {extractedData.platform === "spotify" && extractedData.tracks && extractedData.tracks.length === 1 && (() => {
+            const singleTrack = extractedData.tracks[0];
+            if (!singleTrack) return null;
+            const isPlaying = playingTrackId === singleTrack.id;
+
+            return (
+              <div className="p-4 rounded-xl bg-slate-950/80 border border-emerald-950 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold border border-emerald-500/30 shrink-0">
+                    <Music className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1 sm:flex-none">
+                    <div className="text-xs font-bold text-white truncate">{singleTrack.title}</div>
+                    <div className="text-[11px] text-slate-400 truncate">
+                      {singleTrack.artist} • <span className="font-mono text-emerald-400 font-semibold">{singleTrack.durationFormatted}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {singleTrack.previewUrl && (
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <button
+                      type="button"
+                      onClick={() => togglePlayPreview(singleTrack.id, singleTrack.previewUrl)}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition-all cursor-pointer"
+                    >
+                      {isPlaying ? (
+                        <>
+                          <Pause className="w-3.5 h-3.5 fill-current" />
+                          <span>Jeda Preview</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>Dengarkan Preview (30s)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* SPOTIFY PLAYLIST / ALBUM INTERACTIVE TRACKLIST */}
           {extractedData.platform === "spotify" && extractedData.tracks && extractedData.tracks.length > 1 && (
