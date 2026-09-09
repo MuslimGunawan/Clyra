@@ -14,6 +14,8 @@ export interface SpotifyTrack {
   previewUrl: string | null;
   query: string;
   uri?: string;
+  youtubeId?: string | null;
+  youtubeUrl?: string | null;
 }
 
 export interface SpotifyResult {
@@ -33,6 +35,26 @@ function formatDuration(ms: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+export async function resolveYouTubeTrackId(artist: string, title: string): Promise<string | null> {
+  try {
+    const q = encodeURIComponent(`${artist} ${title} Audio`);
+    const res = await fetch(`https://www.youtube.com/results?search_query=${q}`, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const match = html.match(/\/watch\?v=([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 export function isSpotifyUrl(url: string): boolean {
@@ -137,6 +159,8 @@ export async function extractSpotifyData(rawUrl: string): Promise<SpotifyResult 
       const trackDuration = entity.duration || 0;
       const cleanArtist = artistName.replace(/,/g, " ").replace(/\s+/g, " ").trim();
       const cleanTitle = finalTitle.replace(/,/g, " ").replace(/\s+/g, " ").trim();
+      const ytId = await resolveYouTubeTrackId(cleanArtist, cleanTitle);
+
       tracks.push({
         id: `track_${id}`,
         trackNumber: 1,
@@ -147,6 +171,8 @@ export async function extractSpotifyData(rawUrl: string): Promise<SpotifyResult 
         previewUrl: entity.audioPreview?.url || null,
         query: `${cleanArtist} ${cleanTitle} Audio`.trim(),
         uri: entity.uri || `spotify:track:${id}`,
+        youtubeId: ytId,
+        youtubeUrl: ytId ? `https://www.youtube.com/watch?v=${ytId}` : null,
       });
     } else if (entity.trackList && Array.isArray(entity.trackList)) {
       // Playlist or Album with trackList

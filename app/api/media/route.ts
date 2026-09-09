@@ -305,6 +305,21 @@ export async function POST(req: NextRequest) {
             searchQuery: singleTrack.query,
           });
 
+          if (singleTrack.youtubeUrl) {
+            options.push({
+              id: "spot_yt_full",
+              quality: `Audio Versi Lengkap (${singleTrack.durationFormatted || "Penuh"})`,
+              format: "youtube",
+              size: `Durasi Lengkap (${singleTrack.durationFormatted})`,
+              type: "video",
+              label: "Buka / Streaming Lagu Penuh (YouTube Official)",
+              directDownloadUrl: singleTrack.youtubeUrl,
+              filename: `${sanitizeFilename(`${singleTrack.artist} - ${singleTrack.title}`)}.mp4`,
+              safeTitle: `${singleTrack.artist} - ${singleTrack.title}`,
+              isExternal: true,
+            });
+          }
+
           if (singleTrack.previewUrl) {
             const previewToken = encodeObfuscatedToken({
               url: singleTrack.previewUrl,

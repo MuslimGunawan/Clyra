@@ -29,7 +29,8 @@ import {
   Search,
   Square,
   PlayCircle,
-  Package
+  Package,
+  ExternalLink
 } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
 
@@ -38,7 +39,7 @@ type PlatformType = "youtube" | "tiktok" | "instagram" | "facebook" | "twitter" 
 interface DownloadOption {
   id: string;
   quality: string;
-  format: "mp4" | "mp3" | "jpg";
+  format: "mp4" | "mp3" | "jpg" | "youtube" | string;
   size?: string;
   type: "video" | "audio" | "image";
   label: string;
@@ -49,6 +50,7 @@ interface DownloadOption {
   cleanUrl?: string;
   searchQuery?: string;
   isInstagram?: boolean;
+  isExternal?: boolean;
 }
 
 interface SpotifyTrackItem {
@@ -61,6 +63,8 @@ interface SpotifyTrackItem {
   previewUrl: string | null;
   query: string;
   uri?: string;
+  youtubeId?: string | null;
+  youtubeUrl?: string | null;
 }
 
 export default function MediaDownloader() {
@@ -228,6 +232,12 @@ export default function MediaDownloader() {
 
   // Safe In-House Media Downloader with Psychological Continuous Easing
   const handleDownload = async (opt: DownloadOption) => {
+    if (opt.isExternal && opt.directDownloadUrl) {
+      window.open(opt.directDownloadUrl, "_blank");
+      showToast("Membuka sumber audio versi lengkap di tab baru...", "info");
+      return;
+    }
+
     setActiveDownloadId(opt.id);
     setDownloadProgress(12);
     setIsDownloadDone(false);
@@ -958,12 +968,25 @@ export default function MediaDownloader() {
                   </div>
                 </div>
 
-                {singleTrack.previewUrl && (
-                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+                  {singleTrack.youtubeUrl && (
+                    <a
+                      href={singleTrack.youtubeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 text-xs font-semibold transition-all cursor-pointer"
+                      title="Buka lagu berdurasi lengkap di YouTube"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Versi Lengkap ({singleTrack.durationFormatted})</span>
+                    </a>
+                  )}
+
+                  {singleTrack.previewUrl && (
                     <button
                       type="button"
                       onClick={() => togglePlayPreview(singleTrack.id, singleTrack.previewUrl)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition-all cursor-pointer"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition-all cursor-pointer"
                     >
                       {isPlaying ? (
                         <>
@@ -973,12 +996,12 @@ export default function MediaDownloader() {
                       ) : (
                         <>
                           <Play className="w-3.5 h-3.5 fill-current" />
-                          <span>Dengarkan Preview (30s)</span>
+                          <span>Preview (30s)</span>
                         </>
                       )}
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })()}
@@ -1251,12 +1274,21 @@ export default function MediaDownloader() {
                     <button
                       onClick={() => handleDownload(opt)}
                       disabled={activeDownloadId === opt.id}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-xs font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer ${
+                        opt.isExternal
+                          ? "bg-red-600 hover:bg-red-500 shadow-red-600/20"
+                          : "bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20"
+                      }`}
                     >
                       {activeDownloadId === opt.id ? (
                         <>
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                           <span>{downloadProgress}%</span>
+                        </>
+                      ) : opt.isExternal ? (
+                        <>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Buka Full</span>
                         </>
                       ) : (
                         <>
