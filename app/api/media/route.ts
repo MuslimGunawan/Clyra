@@ -98,7 +98,7 @@ async function downloadInHouseMedia(
     if (type === "audio") {
       const extractorArgs = isInstagram
         ? []
-        : ["--extractor-args", "youtube:player_client=android"];
+        : ["--extractor-args", "youtube:player_client=android,web"];
 
       await execFileAsync(
         "python",
@@ -148,7 +148,7 @@ async function downloadInHouseMedia(
       );
     }
 
-    if (fs.existsSync(outputFile)) {
+    if (fs.existsSync(/*turbopackIgnore: true*/ outputFile)) {
       return {
         fileUrl: `/downloads/${obfuscatedKey}.${ext}`,
         fileKey: obfuscatedKey,
@@ -177,7 +177,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { url, action, formatType, safeTitle: requestedTitle, isInstagram, searchQuery, previewUrl } = await req.json();
+    const { url, action, formatType, safeTitle: requestedTitle, isInstagram, searchQuery, previewUrl, youtubeUrl } = await req.json();
     if (!url || typeof url !== "string") {
       return NextResponse.json({ error: "URL tidak valid" }, { status: 400 });
     }
@@ -197,7 +197,13 @@ export async function POST(req: NextRequest) {
       const isIg = Boolean(isInstagram || rawUrl.includes("instagram.com"));
       let cleanTargetUrl = rawUrl;
 
-      if (searchQuery && typeof searchQuery === "string") {
+      // If a direct YouTube video URL is passed or found, use it directly (fastest, most accurate)
+      if (youtubeUrl && isSafePublicUrl(youtubeUrl)) {
+        cleanTargetUrl = youtubeUrl;
+      } else if (!isIg && (rawUrl.includes("youtube.com") || rawUrl.includes("youtu.be"))) {
+        const ytId = getYouTubeId(rawUrl);
+        if (ytId) cleanTargetUrl = `https://www.youtube.com/watch?v=${ytId}`;
+      } else if (searchQuery && typeof searchQuery === "string") {
         // Spotify track audio resolution via ytsearch1
         const cleanQ = searchQuery
           .replace(/,/g, " ")
@@ -206,9 +212,6 @@ export async function POST(req: NextRequest) {
           .trim()
           .slice(0, 120);
         cleanTargetUrl = `ytsearch1:${cleanQ}`;
-      } else if (!isIg && (rawUrl.includes("youtube.com") || rawUrl.includes("youtu.be"))) {
-        const ytId = getYouTubeId(rawUrl);
-        if (ytId) cleanTargetUrl = `https://www.youtube.com/watch?v=${ytId}`;
       }
 
       const safeTitle = sanitizeFilename(requestedTitle, `clyra_media_${Date.now()}`);
@@ -234,26 +237,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Proses dibatalkan pengguna." }, { status: 499 });
       }
 
-      // HIGH-RELIABILITY SPOTIFY SERVERLESS FALLBACK:
-      // If serverless runtime lacks Python/FFmpeg binaries (e.g. on Vercel),
-      // seamlessly stream the official studio audio stream to the user with proper filename.
-      let targetPreviewUrl: string | null = previewUrl && isSafePublicUrl(previewUrl) ? previewUrl : null;
-
-      if (!targetPreviewUrl && isSpotifyUrl(rawUrl)) {
-        try {
-          const spotData = await extractSpotifyData(rawUrl);
-          const singleTrack = spotData?.tracks?.[0];
-          if (singleTrack?.previewUrl && isSafePublicUrl(singleTrack.previewUrl)) {
-            targetPreviewUrl = singleTrack.previewUrl;
-          }
-        } catch (e) {
-          console.error("Spotify fallback extraction error:", e);
-        }
-      }
-
-      if (targetPreviewUrl) {
+      // ONLY stream previewUrl if the user explicitly requested a preview!
+      // NEVER silently serve a 30s preview when the user requested the full-length MP3!
+      if (previewUrl && isSafePublicUrl(previewUrl)) {
         const streamToken = encodeObfuscatedToken({
-          url: targetPreviewUrl,
+          url: previewUrl,
           filename: `${safeTitle}.mp3`,
           type: "direct",
           format: "audio",
@@ -269,7 +257,14 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      return NextResponse.json({ error: "Gagal merender file media." }, { status: 500 });
+      return NextResponse.json(
+        { 
+          error: "Engine render FFmpeg/Python tidak tersedia di serverless saat ini. Silakan gunakan tombol Converter Cepat MP3 untuk mengunduh lagu versi penuh.",
+          canUseConverter: true,
+          youtubeUrl: youtubeUrl || null
+        }, 
+        { status: 500 }
+      );
     }
 
     // 4. SPOTIFY EXTRACTION (Tracks, Playlists, Albums, Artists)
@@ -292,23 +287,39 @@ export async function POST(req: NextRequest) {
         if (isSingleTrack && singleTrack) {
           options.push({
             id: "spot_audio_320",
-            quality: "Audio MP3 Murni (320 kbps High Quality)",
+            quality: `Audio MP3 Murni 320kbps (${singleTrack.durationFormatted})`,
             format: "mp3",
-            size: "320kbps MP3 Penuh",
+            size: `320kbps MP3 Penuh (${singleTrack.durationFormatted})`,
             type: "audio",
-            label: "Download Lagu MP3 Kualitas Penuh (320 kbps)",
+            label: `Download Lagu MP3 Durasi Penuh (${singleTrack.durationFormatted}) - Engine Clyra`,
             directDownloadUrl: `/downloads/${generateObfuscatedId("cly_spot")}.mp3`,
             filename: `${sanitizeFilename(`${singleTrack.artist} - ${singleTrack.title}`)}.mp3`,
             safeTitle: `${singleTrack.artist} - ${singleTrack.title}`,
             needsProcessing: true,
-            cleanUrl: rawUrl,
+            cleanUrl: singleTrack.youtubeUrl || rawUrl,
             searchQuery: singleTrack.query,
+            youtubeUrl: singleTrack.youtubeUrl,
           });
+
+          if (singleTrack.youtubeId) {
+            options.push({
+              id: "spot_converter_full",
+              quality: `Converter Cepat MP3 Full (${singleTrack.durationFormatted})`,
+              format: "mp3",
+              size: `Durasi Lengkap (${singleTrack.durationFormatted})`,
+              type: "audio",
+              label: `Download Lagu Durasi Penuh (${singleTrack.durationFormatted}) via Converter Cepat`,
+              directDownloadUrl: `https://onlymp3.to/watch?v=${singleTrack.youtubeId}`,
+              filename: `${sanitizeFilename(`${singleTrack.artist} - ${singleTrack.title}`)}.mp3`,
+              safeTitle: `${singleTrack.artist} - ${singleTrack.title}`,
+              isExternal: true,
+            });
+          }
 
           if (singleTrack.youtubeUrl) {
             options.push({
               id: "spot_yt_full",
-              quality: `Audio Versi Lengkap (${singleTrack.durationFormatted || "Penuh"})`,
+              quality: `Audio / Video Versi Lengkap (${singleTrack.durationFormatted || "Penuh"})`,
               format: "youtube",
               size: `Durasi Lengkap (${singleTrack.durationFormatted})`,
               type: "video",
@@ -329,11 +340,11 @@ export async function POST(req: NextRequest) {
             });
             options.push({
               id: "spot_preview",
-              quality: "Audio Preview 30 Detik (Direct Spotify CDN)",
+              quality: "Preview Audio Resmi (Hanya 30 Detik)",
               format: "mp3",
-              size: "Preview MP3 Cepat",
+              size: "Potongan Cuplikan 30s",
               type: "audio",
-              label: "Download Preview Audio Resmi (Langsung dari Spotify)",
+              label: "Download Cuplikan Audio 30 Detik (Direct Spotify CDN)",
               directDownloadUrl: `/api/media/download?token=${previewToken}`,
               filename: `${sanitizeFilename(`${singleTrack.artist} - ${singleTrack.title}`)}_preview.mp3`,
               safeTitle: `${singleTrack.artist} - ${singleTrack.title}_preview`,

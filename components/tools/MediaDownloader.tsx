@@ -49,6 +49,8 @@ interface DownloadOption {
   needsProcessing?: boolean;
   cleanUrl?: string;
   searchQuery?: string;
+  youtubeUrl?: string;
+  youtubeId?: string;
   isInstagram?: boolean;
   isExternal?: boolean;
 }
@@ -289,6 +291,7 @@ export default function MediaDownloader() {
         }
 
         const previewToPass = extractedData?.tracks?.[0]?.previewUrl || undefined;
+        const resolvedYtUrl = opt.youtubeUrl || extractedData?.tracks?.[0]?.youtubeUrl || undefined;
 
         const res = await fetch("/api/media", {
           method: "POST",
@@ -296,8 +299,9 @@ export default function MediaDownloader() {
           body: JSON.stringify({
             action: "download_stream",
             url: opt.cleanUrl,
+            youtubeUrl: resolvedYtUrl,
             searchQuery: queryToUse,
-            previewUrl: previewToPass,
+            previewUrl: opt.id === "spot_preview" ? previewToPass : undefined,
             formatType: opt.type,
             safeTitle: opt.safeTitle,
             isInstagram: opt.isInstagram,
@@ -306,6 +310,14 @@ export default function MediaDownloader() {
 
         const resData = await res.json();
         if (!res.ok || !resData.downloadUrl) {
+          const ytId = opt.youtubeId || extractedData?.tracks?.[0]?.youtubeId;
+          if (ytId && opt.type === "audio") {
+            clearInterval(progressTimer);
+            showToast("Membuka converter MP3 durasi penuh...", "info");
+            window.open(`https://onlymp3.to/watch?v=${ytId}`, "_blank");
+            setActiveDownloadId(null);
+            return;
+          }
           throw new Error(resData.error || "Gagal merender file media.");
         }
         finalDownloadUrl = resData.downloadUrl;
@@ -357,9 +369,9 @@ export default function MediaDownloader() {
         signal,
         body: JSON.stringify({
           action: "download_stream",
-          url: url || "https://open.spotify.com",
+          url: track.youtubeUrl || url || "https://open.spotify.com",
+          youtubeUrl: track.youtubeUrl || undefined,
           searchQuery: track.query,
-          previewUrl: track.previewUrl || undefined,
           formatType: "audio",
           safeTitle: `${track.artist} - ${track.title}`,
         }),
@@ -368,6 +380,12 @@ export default function MediaDownloader() {
       const data = await res.json();
       if (signal?.aborted) return;
       if (!res.ok || !data.downloadUrl) {
+        if (track.youtubeId) {
+          showToast(`Membuka converter MP3 lagu penuh untuk "${track.title}"...`, "info");
+          window.open(`https://onlymp3.to/watch?v=${track.youtubeId}`, "_blank");
+          setTrackStatusMap((prev) => ({ ...prev, [track.id]: "done" }));
+          return;
+        }
         throw new Error(data.error || "Gagal mengonversi lagu.");
       }
 
@@ -948,54 +966,89 @@ export default function MediaDownloader() {
             </div>
           </div>
 
-          {/* SPOTIFY SINGLE TRACK INTERACTIVE PREVIEW */}
+          {/* SPOTIFY SINGLE TRACK INTERACTIVE CARD */}
           {extractedData.platform === "spotify" && extractedData.tracks && extractedData.tracks.length === 1 && (() => {
             const singleTrack = extractedData.tracks[0];
             if (!singleTrack) return null;
             const isPlaying = playingTrackId === singleTrack.id;
+            const isDownloading = trackDownloadingId === singleTrack.id;
+            const trackStatus = trackStatusMap[singleTrack.id];
 
             return (
-              <div className="p-4 rounded-xl bg-slate-950/80 border border-emerald-950 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold border border-emerald-500/30 shrink-0">
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-950 via-[#0a0d14] to-slate-950 border border-emerald-500/30 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5 w-full md:w-auto">
+                  <div className="w-11 h-11 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold border border-emerald-500/30 shrink-0 shadow-inner">
                     <Music className="w-5 h-5" />
                   </div>
-                  <div className="min-w-0 flex-1 sm:flex-none">
-                    <div className="text-xs font-bold text-white truncate">{singleTrack.title}</div>
-                    <div className="text-[11px] text-slate-400 truncate">
-                      {singleTrack.artist} • <span className="font-mono text-emerald-400 font-semibold">{singleTrack.durationFormatted}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs sm:text-sm font-bold text-white truncate">{singleTrack.title}</div>
+                    <div className="text-[11px] text-slate-400 truncate flex items-center gap-2 mt-0.5">
+                      <span>{singleTrack.artist}</span>
+                      <span className="text-slate-600">•</span>
+                      <span className="font-mono text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 text-[10px]">
+                        Durasi Lengkap: {singleTrack.durationFormatted}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
-                  {singleTrack.youtubeUrl && (
+                <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
+                  {/* 1. Main Emerald Full MP3 Download Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadSpotifyTrack(singleTrack)}
+                    disabled={isDownloading}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/30 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                    title={`Download lagu berdurasi lengkap (${singleTrack.durationFormatted})`}
+                  >
+                    {isDownloading ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Mengonversi...</span>
+                      </>
+                    ) : trackStatus === "done" ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Tersimpan!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download MP3 Penuh ({singleTrack.durationFormatted})</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* 2. Instant Fast Converter Option */}
+                  {singleTrack.youtubeId && (
                     <a
-                      href={singleTrack.youtubeUrl}
+                      href={`https://onlymp3.to/watch?v=${singleTrack.youtubeId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 text-xs font-semibold transition-all cursor-pointer"
-                      title="Buka lagu berdurasi lengkap di YouTube"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-xs font-semibold transition-all cursor-pointer shadow-sm"
+                      title="Unduh MP3 durasi penuh melalui converter instan berkecepatan tinggi"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Versi Lengkap ({singleTrack.durationFormatted})</span>
+                      <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Converter Cepat Full</span>
                     </a>
                   )}
 
+                  {/* 3. Audio Preview Toggle Button */}
                   {singleTrack.previewUrl && (
                     <button
                       type="button"
                       onClick={() => togglePlayPreview(singleTrack.id, singleTrack.previewUrl)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition-all cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition-all cursor-pointer"
+                      title="Dengarkan cuplikan audio 30 detik di browser"
                     >
                       {isPlaying ? (
                         <>
-                          <Pause className="w-3.5 h-3.5 fill-current" />
+                          <Pause className="w-3.5 h-3.5 fill-current text-amber-400" />
                           <span>Jeda Preview</span>
                         </>
                       ) : (
                         <>
-                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <Play className="w-3.5 h-3.5 fill-current text-emerald-400" />
                           <span>Preview (30s)</span>
                         </>
                       )}
