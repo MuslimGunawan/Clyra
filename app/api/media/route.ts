@@ -3,6 +3,7 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { 
   isSafePublicUrl, 
   sanitizeFilename, 
@@ -65,12 +66,22 @@ async function downloadInHouseMedia(
   try {
     // Generate an elegant, non-guessable alphanumeric hash for physical storage
     const obfuscatedKey = generateObfuscatedId("cly", 16);
-    const downloadsDir = path.resolve(process.cwd(), "public", "downloads");
+    let downloadsDir = path.resolve(process.cwd(), "public", "downloads");
     
-    if (!fs.existsSync(downloadsDir)) {
-      fs.mkdirSync(downloadsDir, { recursive: true });
-    } else {
-      cleanupDownloadsDir(downloadsDir);
+    try {
+      if (!fs.existsSync(downloadsDir)) {
+        fs.mkdirSync(downloadsDir, { recursive: true });
+      } else {
+        cleanupDownloadsDir(downloadsDir);
+      }
+    } catch (e) {
+      // In serverless environments with read-only root (e.g. Vercel), fallback to OS temp dir
+      downloadsDir = path.resolve(os.tmpdir(), "clyra_downloads");
+      try {
+        if (!fs.existsSync(downloadsDir)) {
+          fs.mkdirSync(downloadsDir, { recursive: true });
+        }
+      } catch (err2) {}
     }
 
     const ext = type === "audio" ? "mp3" : "mp4";
@@ -166,7 +177,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { url, action, formatType, safeTitle: requestedTitle, isInstagram, searchQuery } = await req.json();
+    const { url, action, formatType, safeTitle: requestedTitle, isInstagram, searchQuery, previewUrl } = await req.json();
     if (!url || typeof url !== "string") {
       return NextResponse.json({ error: "URL tidak valid" }, { status: 400 });
     }
@@ -218,9 +229,46 @@ export async function POST(req: NextRequest) {
           ext: result.ext,
         });
       }
+
       if (req.signal?.aborted) {
         return NextResponse.json({ error: "Proses dibatalkan pengguna." }, { status: 499 });
       }
+
+      // HIGH-RELIABILITY SPOTIFY SERVERLESS FALLBACK:
+      // If serverless runtime lacks Python/FFmpeg binaries (e.g. on Vercel),
+      // seamlessly stream the official studio audio stream to the user with proper filename.
+      let targetPreviewUrl: string | null = previewUrl && isSafePublicUrl(previewUrl) ? previewUrl : null;
+
+      if (!targetPreviewUrl && isSpotifyUrl(rawUrl)) {
+        try {
+          const spotData = await extractSpotifyData(rawUrl);
+          const singleTrack = spotData?.tracks?.[0];
+          if (singleTrack?.previewUrl && isSafePublicUrl(singleTrack.previewUrl)) {
+            targetPreviewUrl = singleTrack.previewUrl;
+          }
+        } catch (e) {
+          console.error("Spotify fallback extraction error:", e);
+        }
+      }
+
+      if (targetPreviewUrl) {
+        const streamToken = encodeObfuscatedToken({
+          url: targetPreviewUrl,
+          filename: `${safeTitle}.mp3`,
+          type: "direct",
+          format: "audio",
+        });
+        const streamUrl = `/api/media/download?token=${streamToken}`;
+        return NextResponse.json({
+          success: true,
+          downloadUrl: streamUrl,
+          blobUrl: streamUrl,
+          fileKey: generateObfuscatedId("cly_spot_fb"),
+          ext: "mp3",
+          isFallback: true,
+        });
+      }
+
       return NextResponse.json({ error: "Gagal merender file media." }, { status: 500 });
     }
 

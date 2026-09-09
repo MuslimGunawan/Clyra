@@ -278,6 +278,8 @@ export default function MediaDownloader() {
           queryToUse = `${opt.safeTitle} Audio`;
         }
 
+        const previewToPass = extractedData?.tracks?.[0]?.previewUrl || undefined;
+
         const res = await fetch("/api/media", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -285,6 +287,7 @@ export default function MediaDownloader() {
             action: "download_stream",
             url: opt.cleanUrl,
             searchQuery: queryToUse,
+            previewUrl: previewToPass,
             formatType: opt.type,
             safeTitle: opt.safeTitle,
             isInstagram: opt.isInstagram,
@@ -346,6 +349,7 @@ export default function MediaDownloader() {
           action: "download_stream",
           url: url || "https://open.spotify.com",
           searchQuery: track.query,
+          previewUrl: track.previewUrl || undefined,
           formatType: "audio",
           safeTitle: `${track.artist} - ${track.title}`,
         }),
@@ -423,6 +427,7 @@ export default function MediaDownloader() {
         action: "download_stream",
         url: url || "https://open.spotify.com",
         searchQuery: track.query,
+        previewUrl: track.previewUrl || undefined,
         formatType: "audio",
         safeTitle: `${track.artist} - ${track.title}`,
       }),
