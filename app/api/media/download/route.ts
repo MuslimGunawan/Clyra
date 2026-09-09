@@ -7,6 +7,7 @@ import {
   checkRateLimit, 
   decodeObfuscatedToken 
 } from "@/lib/security";
+import { resolveDirectYouTubeStreamUrl } from "@/lib/spotify";
 
 const execFileAsync = promisify(execFile);
 
@@ -111,14 +112,20 @@ export async function GET(req: NextRequest) {
           contentType = "video/mp4";
         }
 
+        const headers: Record<string, string> = {
+          "Content-Type": contentType,
+          "Content-Disposition": `attachment; filename="${safeFilename}"`,
+          "Cache-Control": "public, max-age=3600",
+          "X-Content-Type-Options": "nosniff",
+        };
+        const contentLength = upstreamRes.headers.get("content-length");
+        if (contentLength) {
+          headers["Content-Length"] = contentLength;
+        }
+
         return new NextResponse(upstreamRes.body, {
           status: 200,
-          headers: {
-            "Content-Type": contentType,
-            "Content-Disposition": `attachment; filename="${safeFilename}"`,
-            "Cache-Control": "public, max-age=3600",
-            "X-Content-Type-Options": "nosniff",
-          },
+          headers,
         });
       }
     } catch (e) {
@@ -129,7 +136,13 @@ export async function GET(req: NextRequest) {
 
   // 5. YOUTUBE DIRECT ENGINE
   if (type === "youtube" && urlParam) {
-    const directStreamUrl = await getDirectYtDlpStream(urlParam, isAudio);
+    let directStreamUrl = await getDirectYtDlpStream(urlParam, isAudio);
+    if (!directStreamUrl) {
+      const match = urlParam.match(/(?:v=|\/embed\/|youtu\.be\/|v\/|watch\?v=)([^#&?]{11})/);
+      if (match && match[1]) {
+        directStreamUrl = await resolveDirectYouTubeStreamUrl(match[1]);
+      }
+    }
     if (directStreamUrl && isSafePublicUrl(directStreamUrl)) {
       return NextResponse.redirect(directStreamUrl);
     }

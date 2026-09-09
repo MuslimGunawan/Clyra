@@ -11,7 +11,7 @@ import {
   generateObfuscatedId, 
   encodeObfuscatedToken 
 } from "@/lib/security";
-import { extractSpotifyData, isSpotifyUrl } from "@/lib/spotify";
+import { extractSpotifyData, isSpotifyUrl, resolveDirectYouTubeStreamUrl, resolveYouTubeTrackId } from "@/lib/spotify";
 
 const execFileAsync = promisify(execFile);
 
@@ -195,16 +195,46 @@ export async function POST(req: NextRequest) {
     // 3. ACTION: ON-DEMAND IN-HOUSE DOWNLOAD
     if (action === "download_stream") {
       const isIg = Boolean(isInstagram || rawUrl.includes("instagram.com"));
-      let cleanTargetUrl = rawUrl;
+      const safeTitle = sanitizeFilename(requestedTitle, `clyra_music_${Date.now()}`);
 
-      // If a direct YouTube video URL is passed or found, use it directly (fastest, most accurate)
+      // Check if we have or can resolve a YouTube video ID for fast in-house streaming
+      let resolvedYtId: string | null = null;
+      if (youtubeUrl && isSafePublicUrl(youtubeUrl)) {
+        resolvedYtId = getYouTubeId(youtubeUrl);
+      } else if (!isIg && (rawUrl.includes("youtube.com") || rawUrl.includes("youtu.be"))) {
+        resolvedYtId = getYouTubeId(rawUrl);
+      } else if (searchQuery && typeof searchQuery === "string") {
+        resolvedYtId = await resolveYouTubeTrackId("", searchQuery);
+      }
+
+      // If YouTube ID resolved, extract direct stream URL (Pure Node.js, serverless-friendly, instant)
+      if (resolvedYtId) {
+        const directStreamUrl = await resolveDirectYouTubeStreamUrl(resolvedYtId);
+        if (directStreamUrl && isSafePublicUrl(directStreamUrl)) {
+          const streamToken = encodeObfuscatedToken({
+            url: directStreamUrl,
+            filename: `${safeTitle}.mp3`,
+            type: "direct",
+            format: "audio",
+          });
+          const streamUrl = `/api/media/download?token=${streamToken}`;
+          return NextResponse.json({
+            success: true,
+            downloadUrl: streamUrl,
+            blobUrl: streamUrl,
+            fileKey: generateObfuscatedId("cly_spot"),
+            ext: "mp3",
+          });
+        }
+      }
+
+      let cleanTargetUrl = rawUrl;
       if (youtubeUrl && isSafePublicUrl(youtubeUrl)) {
         cleanTargetUrl = youtubeUrl;
       } else if (!isIg && (rawUrl.includes("youtube.com") || rawUrl.includes("youtu.be"))) {
         const ytId = getYouTubeId(rawUrl);
         if (ytId) cleanTargetUrl = `https://www.youtube.com/watch?v=${ytId}`;
       } else if (searchQuery && typeof searchQuery === "string") {
-        // Spotify track audio resolution via ytsearch1
         const cleanQ = searchQuery
           .replace(/,/g, " ")
           .replace(/[^\w\s\-\.\(\)\[\]]/gi, " ")
@@ -214,7 +244,6 @@ export async function POST(req: NextRequest) {
         cleanTargetUrl = `ytsearch1:${cleanQ}`;
       }
 
-      const safeTitle = sanitizeFilename(requestedTitle, `clyra_media_${Date.now()}`);
       const result = await downloadInHouseMedia(
         cleanTargetUrl,
         safeTitle,
@@ -238,7 +267,6 @@ export async function POST(req: NextRequest) {
       }
 
       // ONLY stream previewUrl if the user explicitly requested a preview!
-      // NEVER silently serve a 30s preview when the user requested the full-length MP3!
       if (previewUrl && isSafePublicUrl(previewUrl)) {
         const streamToken = encodeObfuscatedToken({
           url: previewUrl,
@@ -259,9 +287,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json(
         { 
-          error: "Engine render FFmpeg/Python tidak tersedia di serverless saat ini. Silakan gunakan tombol Converter Cepat MP3 untuk mengunduh lagu versi penuh.",
-          canUseConverter: true,
-          youtubeUrl: youtubeUrl || null
+          error: "Gagal memproses unduhan audio. Silakan coba beberapa saat lagi.",
         }, 
         { status: 500 }
       );
@@ -287,11 +313,11 @@ export async function POST(req: NextRequest) {
         if (isSingleTrack && singleTrack) {
           options.push({
             id: "spot_audio_320",
-            quality: `Audio MP3 Murni 320kbps (${singleTrack.durationFormatted})`,
+            quality: `Audio MP3 Durasi Penuh (${singleTrack.durationFormatted})`,
             format: "mp3",
             size: `320kbps MP3 Penuh (${singleTrack.durationFormatted})`,
             type: "audio",
-            label: `Download Lagu MP3 Durasi Penuh (${singleTrack.durationFormatted}) - Engine Clyra`,
+            label: `Download Lagu MP3 Durasi Penuh (${singleTrack.durationFormatted}) - In-House Clyra`,
             directDownloadUrl: `/downloads/${generateObfuscatedId("cly_spot")}.mp3`,
             filename: `${sanitizeFilename(`${singleTrack.artist} - ${singleTrack.title}`)}.mp3`,
             safeTitle: `${singleTrack.artist} - ${singleTrack.title}`,
@@ -300,36 +326,6 @@ export async function POST(req: NextRequest) {
             searchQuery: singleTrack.query,
             youtubeUrl: singleTrack.youtubeUrl,
           });
-
-          if (singleTrack.youtubeId) {
-            options.push({
-              id: "spot_converter_full",
-              quality: `Converter Cepat MP3 Full (${singleTrack.durationFormatted})`,
-              format: "mp3",
-              size: `Durasi Lengkap (${singleTrack.durationFormatted})`,
-              type: "audio",
-              label: `Download Lagu Durasi Penuh (${singleTrack.durationFormatted}) via Converter Cepat`,
-              directDownloadUrl: `https://onlymp3.to/watch?v=${singleTrack.youtubeId}`,
-              filename: `${sanitizeFilename(`${singleTrack.artist} - ${singleTrack.title}`)}.mp3`,
-              safeTitle: `${singleTrack.artist} - ${singleTrack.title}`,
-              isExternal: true,
-            });
-          }
-
-          if (singleTrack.youtubeUrl) {
-            options.push({
-              id: "spot_yt_full",
-              quality: `Audio / Video Versi Lengkap (${singleTrack.durationFormatted || "Penuh"})`,
-              format: "youtube",
-              size: `Durasi Lengkap (${singleTrack.durationFormatted})`,
-              type: "video",
-              label: "Buka / Streaming Lagu Penuh (YouTube Official)",
-              directDownloadUrl: singleTrack.youtubeUrl,
-              filename: `${sanitizeFilename(`${singleTrack.artist} - ${singleTrack.title}`)}.mp4`,
-              safeTitle: `${singleTrack.artist} - ${singleTrack.title}`,
-              isExternal: true,
-            });
-          }
 
           if (singleTrack.previewUrl) {
             const previewToken = encodeObfuscatedToken({

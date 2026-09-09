@@ -310,14 +310,6 @@ export default function MediaDownloader() {
 
         const resData = await res.json();
         if (!res.ok || !resData.downloadUrl) {
-          const ytId = opt.youtubeId || extractedData?.tracks?.[0]?.youtubeId;
-          if (ytId && opt.type === "audio") {
-            clearInterval(progressTimer);
-            showToast("Membuka converter MP3 durasi penuh...", "info");
-            window.open(`https://onlymp3.to/watch?v=${ytId}`, "_blank");
-            setActiveDownloadId(null);
-            return;
-          }
           throw new Error(resData.error || "Gagal merender file media.");
         }
         finalDownloadUrl = resData.downloadUrl;
@@ -380,12 +372,6 @@ export default function MediaDownloader() {
       const data = await res.json();
       if (signal?.aborted) return;
       if (!res.ok || !data.downloadUrl) {
-        if (track.youtubeId) {
-          showToast(`Membuka converter MP3 lagu penuh untuk "${track.title}"...`, "info");
-          window.open(`https://onlymp3.to/watch?v=${track.youtubeId}`, "_blank");
-          setTrackStatusMap((prev) => ({ ...prev, [track.id]: "done" }));
-          return;
-        }
         throw new Error(data.error || "Gagal mengonversi lagu.");
       }
 
@@ -1019,21 +1005,7 @@ export default function MediaDownloader() {
                     )}
                   </button>
 
-                  {/* 2. Instant Fast Converter Option */}
-                  {singleTrack.youtubeId && (
-                    <a
-                      href={`https://onlymp3.to/watch?v=${singleTrack.youtubeId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-xs font-semibold transition-all cursor-pointer shadow-sm"
-                      title="Unduh MP3 durasi penuh melalui converter instan berkecepatan tinggi"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                      <span>Converter Cepat Full</span>
-                    </a>
-                  )}
-
-                  {/* 3. Audio Preview Toggle Button */}
+                  {/* 2. Audio Preview Toggle Button */}
                   {singleTrack.previewUrl && (
                     <button
                       type="button"

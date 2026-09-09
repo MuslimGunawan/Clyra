@@ -39,19 +39,80 @@ function formatDuration(ms: number): string {
 
 export async function resolveYouTubeTrackId(artist: string, title: string): Promise<string | null> {
   try {
-    const q = encodeURIComponent(`${artist} ${title} Audio`);
+    let cleanQuery = `${artist} ${title}`.replace(/,/g, " ").replace(/\s+/g, " ").trim();
+    if (!cleanQuery.toLowerCase().includes("audio")) {
+      cleanQuery = `${cleanQuery} Audio`;
+    }
+    const q = encodeURIComponent(cleanQuery);
     const res = await fetch(`https://www.youtube.com/results?search_query=${q}`, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept-Language": "en-US,en;q=0.9",
       },
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) return null;
     const html = await res.text();
-    const match = html.match(/\/watch\?v=([a-zA-Z0-9_-]{11})/);
+    const match = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/) || html.match(/\/watch\?v=([a-zA-Z0-9_-]{11})/);
     return match ? match[1] : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function resolveDirectYouTubeStreamUrl(videoId: string): Promise<string | null> {
+  try {
+    const body = {
+      context: {
+        client: {
+          clientName: "ANDROID",
+          clientVersion: "21.02.35",
+          androidSdkVersion: 30,
+          userAgent: "com.google.android.youtube/21.02.35 (Linux; U; Android 11) gzip",
+          osName: "Android",
+          osVersion: "11",
+          hl: "en",
+          timeZone: "UTC",
+          utcOffsetMinutes: 0,
+        },
+      },
+      videoId: videoId,
+      playbackContext: {
+        contentPlaybackContext: {
+          html5Preference: "HTML5_PREF_WANTS",
+          signatureTimestamp: 20702,
+        },
+      },
+      contentCheckOk: true,
+      racyCheckOk: true,
+    };
+
+    const res = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
+      method: "POST",
+      headers: {
+        "User-Agent": "com.google.android.youtube/21.02.35 (Linux; U; Android 11) gzip",
+        "X-Youtube-Client-Name": "3",
+        "X-Youtube-Client-Version": "21.02.35",
+        "Origin": "https://www.youtube.com",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(6000),
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    const streamingData = data.streamingData;
+    if (!streamingData) return null;
+
+    const allFormats = [...(streamingData.formats || []), ...(streamingData.adaptiveFormats || [])];
+    for (const f of allFormats) {
+      if (f.url) {
+        return f.url;
+      }
+    }
+    return null;
   } catch (e) {
     return null;
   }
